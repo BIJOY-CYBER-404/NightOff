@@ -33,6 +33,8 @@ object NotificationHelper {
             ).apply {
                 description = "10-minute warning before sleep actions are executed"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 250, 500, 250, 500)
+                setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, null)
             }
 
             val resultChannel = NotificationChannel(
@@ -112,6 +114,9 @@ object NotificationHelper {
             ))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+            .setVibrate(longArrayOf(0, 500, 250, 500, 250, 500))
             .setAutoCancel(true)
             .setContentIntent(contentPendingIntent)
             .addAction(0, context.getString(R.string.action_btn_cancel), cancelPendingIntent)

@@ -24,8 +24,8 @@ data class UpdateInfo(
 
 object InAppUpdateManager {
     private const val TAG = "InAppUpdateManager"
-    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/bijoykumarsarkar/NightOff/releases/latest"
-    private const val FALLBACK_GITHUB_URL = "https://github.com/bijoykumarsarkar/NightOff/releases"
+    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/BIJOY-CYBER-404/NightOff/releases/latest"
+    private const val FALLBACK_GITHUB_URL = "https://github.com/BIJOY-CYBER-404/NightOff/releases"
 
     /**
      * Checks GitHub API for the latest release.

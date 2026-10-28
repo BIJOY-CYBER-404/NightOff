@@ -158,11 +158,6 @@ fun MainScreen(
 
     if (showOnboarding) {
         com.example.ui.components.OnboardingDialog(
-            onDismiss = {
-                showOnboarding = false
-                val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putBoolean("is_first_launch", false).apply()
-            },
             onOpenPermissions = {
                 showOnboarding = false
                 val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)

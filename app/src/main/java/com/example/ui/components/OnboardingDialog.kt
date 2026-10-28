@@ -37,17 +37,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.LightCard
 import com.example.ui.theme.LightPrimary
-import com.example.ui.theme.LightSurfaceVariant
 import com.example.ui.theme.LightTextPrimary
 import com.example.ui.theme.LightTextSecondary
 
 @Composable
 fun OnboardingDialog(
-    onDismiss: () -> Unit,
     onOpenPermissions: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* Non-dismissible to ensure all permissions are granted */ },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -65,8 +63,9 @@ fun OnboardingDialog(
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "Sleep shutdown automation",
-                        color = LightTextSecondary,
+                        text = "Required Permission Setup",
+                        color = LightPrimary,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp
                     )
                 }
@@ -80,7 +79,7 @@ fun OnboardingDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "To pause media, silence calls, lock your screen, and protect your battery while you sleep, NightOff uses a few system permissions:",
+                    text = "To ensure NightOff can successfully pause media, close apps, silence calls, and lock your screen without failing, please grant the required permissions below:",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = LightTextSecondary,
                         lineHeight = 18.sp
@@ -90,37 +89,37 @@ fun OnboardingDialog(
                 OnboardingPermissionRow(
                     icon = Icons.Default.Alarm,
                     title = "Exact Alarms",
-                    desc = "Triggers actions at the precise moment you pick"
+                    desc = "Required to trigger bedtime actions at the precise moment"
                 )
 
                 OnboardingPermissionRow(
                     icon = Icons.Default.Notifications,
                     title = "10-Min Warning Notification",
-                    desc = "Gives you a heads-up warning before shutting down"
+                    desc = "Required for pre-warning alerts and snooze options"
                 )
 
                 OnboardingPermissionRow(
                     icon = Icons.Default.SettingsAccessibility,
                     title = "Accessibility Service",
-                    desc = "Closes recent apps, pauses media, and locks the screen"
+                    desc = "Required to close recent apps and lock screen"
                 )
 
                 OnboardingPermissionRow(
                     icon = Icons.Default.Lock,
                     title = "Device Admin",
-                    desc = "Immediate hardware screen lock"
+                    desc = "Required for instant hardware screen lock"
                 )
 
                 OnboardingPermissionRow(
                     icon = Icons.Default.DoNotDisturbOn,
                     title = "Do Not Disturb",
-                    desc = "Mutes ringers and alerts while sleeping"
+                    desc = "Required to mute ringers while sleeping"
                 )
 
                 OnboardingPermissionRow(
                     icon = Icons.Default.BatteryAlert,
                     title = "Ignore Battery Optimization",
-                    desc = "Ensures Android does not delay sleep actions"
+                    desc = "Required to prevent Android from delaying sleep alarms"
                 )
             }
         },
@@ -129,22 +128,16 @@ fun OnboardingDialog(
                 onClick = onOpenPermissions,
                 colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("onboarding_continue_button")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("onboarding_continue_button")
             ) {
                 Text(
-                    text = "Open Permissions Checklist",
+                    text = "Grant Permissions Now",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
                 )
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = LightSurfaceVariant),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(text = "Later", color = LightTextSecondary)
             }
         },
         containerColor = LightCard
