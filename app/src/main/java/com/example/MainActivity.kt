@@ -27,8 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Badge
@@ -53,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -131,6 +134,12 @@ fun MainScreen(
     val quickTimerActions by viewModel.quickTimerActions.collectAsStateWithLifecycle()
     val currentLang by viewModel.currentLanguage.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    var showOnboarding by rememberSaveable {
+        val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
+        androidx.compose.runtime.mutableStateOf(prefs.getBoolean("is_first_launch", true))
+    }
+
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {
@@ -145,6 +154,22 @@ fun MainScreen(
 
     BackHandler(enabled = selectedTab != 0) {
         selectedTab = 0
+    }
+
+    if (showOnboarding) {
+        com.example.ui.components.OnboardingDialog(
+            onDismiss = {
+                showOnboarding = false
+                val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("is_first_launch", false).apply()
+            },
+            onOpenPermissions = {
+                showOnboarding = false
+                val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("is_first_launch", false).apply()
+                selectedTab = 2
+            }
+        )
     }
 
     Scaffold(
@@ -218,31 +243,28 @@ fun MainScreen(
                         }
                     }
 
-                    // In-app Language Switcher (EN / বাংলা)
+                    // Developer Button in TopBar (replaces language button)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = LightSurfaceVariant,
                         modifier = Modifier
-                            .clickable {
-                                val next = if (currentLang == "en") "bn" else "en"
-                                onChangeLanguage(next)
-                            }
+                            .clickable { selectedTab = 4 }
                             .padding(end = 8.dp)
-                            .testTag("language_toggle_button")
+                            .testTag("developer_topbar_button")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Language,
-                                contentDescription = "Language",
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Developer",
                                 tint = LightPrimary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (currentLang == "en") "বাংলা" else "EN",
+                                text = "Dev",
                                 color = LightTextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
@@ -354,6 +376,7 @@ fun MainScreen(
                     logs = executionLogs,
                     onClearHistory = { viewModel.clearHistory() }
                 )
+                4 -> com.example.ui.screens.DeveloperScreen()
             }
         }
     }

@@ -20,7 +20,8 @@ object AlarmScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
 
         val triggerTime = computeNextTriggerMillis(schedule)
-        if (triggerTime <= System.currentTimeMillis()) {
+        val now = System.currentTimeMillis()
+        if (triggerTime <= now) {
             Log.w(TAG, "Computed trigger time is in the past: $triggerTime")
             return
         }
@@ -33,7 +34,7 @@ object AlarmScheduler {
             }
         }
 
-        // 1. Schedule Execution Alarm
+        // 1. Schedule Execution Alarm with highest priority (AlarmClockInfo)
         val execIntent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_SCHEDULE_ID, schedule.id)
         }
@@ -45,28 +46,44 @@ object AlarmScheduler {
         )
 
         try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerTime,
-                execPendingIntent
-            )
-            Log.d(TAG, "Scheduled execution for schedule ${schedule.id} at $triggerTime")
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException scheduling exact alarm", e)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val clockInfo = AlarmManager.AlarmClockInfo(triggerTime, execPendingIntent)
+                alarmManager.setAlarmClock(clockInfo, execPendingIntent)
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    execPendingIntent
+                )
+            }
+            Log.d(TAG, "Scheduled exact execution for schedule ${schedule.id} at $triggerTime")
+        } catch (e: Exception) {
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    execPendingIntent
+                )
+            } catch (err: Exception) {
+                Log.e(TAG, "Failed scheduling execution alarm", err)
+            }
         }
 
         // 2. Schedule 10-minute warning reminder
         val tenMinutesMillis = 10 * 60 * 1000L
-        val reminderTime = if (triggerTime - System.currentTimeMillis() > tenMinutesMillis) {
+        val totalDuration = triggerTime - now
+
+        val reminderTime = if (totalDuration >= tenMinutesMillis) {
+            // Exactly 10 minutes before bedtime execution
             triggerTime - tenMinutesMillis
-        } else if (triggerTime - System.currentTimeMillis() > 2 * 60 * 1000L) {
-            // If less than 10 mins but more than 2 mins, warn 2 mins prior
-            triggerTime - 2 * 60 * 1000L
+        } else if (totalDuration > 60_000L) {
+            // Short timer (<10 min): notify immediately 20s after start
+            now + 20_000L
         } else {
-            0L // Too short to show a useful pre-warning
+            0L
         }
 
-        if (reminderTime > System.currentTimeMillis()) {
+        if (reminderTime > now) {
             val reminderIntent = Intent(context, ReminderReceiver::class.java).apply {
                 putExtra(EXTRA_SCHEDULE_ID, schedule.id)
                 putExtra("EXTRA_TARGET_TIME", triggerTime)
@@ -84,9 +101,9 @@ object AlarmScheduler {
                     reminderTime,
                     reminderPendingIntent
                 )
-                Log.d(TAG, "Scheduled reminder for schedule ${schedule.id} at $reminderTime")
-            } catch (e: SecurityException) {
-                Log.e(TAG, "SecurityException scheduling reminder alarm", e)
+                Log.d(TAG, "Scheduled 10-min reminder for schedule ${schedule.id} at $reminderTime")
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception scheduling reminder alarm", e)
             }
         }
     }
@@ -136,18 +153,14 @@ object AlarmScheduler {
             set(Calendar.MILLISECOND, 0)
         }
 
-        val daysSet = schedule.getDaysList() // e.g. 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+        val daysSet = schedule.getDaysList() // e.g. 1=Mon..7=Sun
 
         if (daysSet.isEmpty()) {
-            // One-time schedule: if time already passed today, schedule for tomorrow
             if (target.timeInMillis <= now.timeInMillis) {
                 target.add(Calendar.DAY_OF_YEAR, 1)
             }
             return target.timeInMillis
         } else {
-            // Recurring schedule on specific days
-            // Map Android Calendar.DAY_OF_WEEK to 1..7 (Mon..Sun)
-            // Calendar: SUNDAY=1, MONDAY=2, TUESDAY=3, WEDNESDAY=4, THURSDAY=5, FRIDAY=6, SATURDAY=7
             fun calendarDayToIso(dayOfWeek: Int): Int {
                 return when (dayOfWeek) {
                     Calendar.MONDAY -> 1
@@ -173,7 +186,6 @@ object AlarmScheduler {
                     }
                 }
             }
-            // Fallback
             target.add(Calendar.DAY_OF_YEAR, 1)
             return target.timeInMillis
         }

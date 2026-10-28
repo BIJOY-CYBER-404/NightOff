@@ -9,6 +9,7 @@
     <string name="nav_schedules">Schedules</string>
     <string name="nav_permissions">Permissions</string>
     <string name="nav_history">History</string>
+    <string name="nav_dev">Developer</string>
 
     <!-- Timer Tab -->
     <string name="quick_timer_title">Sleep Timer</string>

@@ -18,7 +18,11 @@ class ScheduleRepository(
 ) {
     val allSchedules: Flow<List<NightSchedule>> = scheduleDao.getAllSchedules()
     val activeQuickTimer: Flow<NightSchedule?> = scheduleDao.getActiveQuickTimer()
-    val allExecutionLogs: Flow<List<ExecutionLog>> = executionLogDao.getAllLogs()
+    val allExecutionLogs: Flow<List<ExecutionLog>>
+        get() {
+            val sevenDaysAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000L)
+            return executionLogDao.getLogsSince(sevenDaysAgo)
+        }
 
     suspend fun startQuickTimer(durationMinutes: Int, actions: Set<SleepAction>): Long {
         // Clear any previous quick timer

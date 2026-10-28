@@ -406,11 +406,14 @@ private fun ScheduleEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.widthIn(max = 520.dp),
         title = {
             Text(
                 text = if (initialSchedule == null) stringResource(R.string.add_schedule) else stringResource(R.string.edit_schedule),
                 fontWeight = FontWeight.Bold,
-                color = LightTextPrimary
+                color = LightTextPrimary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         },
         text = {
@@ -423,13 +426,14 @@ private fun ScheduleEditDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(stringResource(R.string.schedule_name)) },
+                    label = { Text(stringResource(R.string.schedule_name), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = LightPrimary,
                         unfocusedBorderColor = LightCardBorder
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    maxLines = 1
                 )
 
                 Box(

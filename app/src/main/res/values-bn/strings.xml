@@ -9,6 +9,7 @@
     <string name="nav_schedules">শিডিউল</string>
     <string name="nav_permissions">অনুমতিসমূহ</string>
     <string name="nav_history">ইতিহাস</string>
+    <string name="nav_dev">ডেভেলপার</string>
 
     <!-- Timer Tab -->
     <string name="quick_timer_title">স্লিপ টাইমার</string>

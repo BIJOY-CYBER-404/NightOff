@@ -12,6 +12,9 @@ interface ExecutionLogDao {
     @Query("SELECT * FROM execution_logs ORDER BY timestamp DESC")
     fun getAllLogs(): Flow<List<ExecutionLog>>
 
+    @Query("SELECT * FROM execution_logs WHERE timestamp >= :minTimestamp ORDER BY timestamp DESC")
+    fun getLogsSince(minTimestamp: Long): Flow<List<ExecutionLog>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(log: ExecutionLog): Long
 

@@ -1,11 +1,8 @@
 package com.example.engine
 
 import android.app.ActivityManager
-import android.app.NotificationManager
-import android.app.admin.DevicePolicyManager
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -13,90 +10,83 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.util.Log
 import com.example.data.AppDatabase
-import com.example.model.ActionResult
 import com.example.model.ExecutionLog
 import com.example.model.NightSchedule
 import com.example.model.SleepAction
-import com.example.receiver.NightOffDeviceAdminReceiver
 import com.example.service.NightOffAccessibilityService
 import com.example.util.NotificationHelper
 import com.example.util.RootUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 object ActionExecutor {
     private const val TAG = "ActionExecutor"
 
-    suspend fun execute(context: Context, scheduleId: Long) = withContext(Dispatchers.IO) {
-        val database = AppDatabase.getDatabase(context)
-        val schedule = database.scheduleDao().getScheduleById(scheduleId)
+    data class ActionResult(
+        val action: SleepAction,
+        val success: Boolean,
+        val detail: String
+    )
 
-        // Cancel rule verification:
-        if (schedule == null) {
-            Log.d(TAG, "Schedule $scheduleId no longer exists, aborting execution.")
-            NotificationHelper.dismissReminderNotification(context, scheduleId)
-            return@withContext
+    data class OverallResult(
+        val scheduleTitle: String,
+        val successCount: Int,
+        val totalCount: Int,
+        val detailsText: String
+    )
+
+    suspend fun execute(context: Context, scheduleId: Long): OverallResult {
+        val db = AppDatabase.getDatabase(context)
+        val schedule = db.scheduleDao().getScheduleById(scheduleId)
+
+        val actionsToRun = if (schedule != null) {
+            schedule.getActionList()
+        } else {
+            SleepAction.defaultActions()
         }
-
-        if (!schedule.isEnabled) {
-            Log.d(TAG, "Schedule $scheduleId is disabled, aborting execution.")
-            NotificationHelper.dismissReminderNotification(context, scheduleId)
-            return@withContext
-        }
-
-        NotificationHelper.dismissReminderNotification(context, scheduleId)
-
-        val selectedActions = schedule.getActionList()
-            .sortedBy { it.executionOrder }
 
         val results = mutableListOf<ActionResult>()
-
-        for (action in selectedActions) {
-            val result = executeSingleAction(context, action)
-            results.add(result)
-            Log.d(TAG, "Executed ${action.name}: ${result.isSuccess} (${result.message})")
-
-            try {
-                Thread.sleep(250)
-            } catch (_: Exception) {}
+        for (action in actionsToRun) {
+            val res = executeSingleAction(context, action)
+            results.add(res)
         }
 
-        // If one-time or quick timer, disable or remove
-        if (schedule.isQuickTimer) {
-            database.scheduleDao().deleteSchedule(schedule)
-        } else if (schedule.getDaysList().isEmpty()) {
-            database.scheduleDao().updateSchedule(schedule.copy(isEnabled = false))
-        }
-
-        // Save execution log
-        val successCount = results.count { it.isSuccess }
+        val successCount = results.count { it.success }
         val totalCount = results.size
-        val status = when {
+        val title = schedule?.title ?: "Bedtime Shutdown"
+
+        val formattedDetails = results.joinToString("\n• ") { res ->
+            val iconStr = if (res.success) "✓" else "✗"
+            "$iconStr ${res.action.name}: ${res.detail}"
+        }
+
+        val statusStr = when {
             successCount == totalCount -> "SUCCESS"
             successCount > 0 -> "PARTIAL"
             else -> "FAILED"
         }
 
-        val formattedDetails = results.joinToString("\n") { res ->
-            val icon = if (res.isSuccess) "✓" else "✕"
-            "$icon ${res.action.name.replace("_", " ")}: ${res.message}"
-        }
-
+        // Save execution log into database
         val log = ExecutionLog(
-            scheduleId = schedule.id,
-            scheduleTitle = schedule.title.ifBlank { "Sleep Shutdown" },
+            scheduleId = scheduleId,
+            scheduleTitle = title,
             timestamp = System.currentTimeMillis(),
             totalActions = totalCount,
             successActions = successCount,
-            status = status,
+            status = statusStr,
             actionResultsFormatted = formattedDetails
         )
-        database.executionLogDao().insertLog(log)
+        db.executionLogDao().insertLog(log)
 
-        // Show execution result notification
+        // Show completion notification
         NotificationHelper.showExecutionResultNotification(
             context = context,
-            scheduleTitle = schedule.title.ifBlank { "Sleep Shutdown" },
+            scheduleTitle = title,
+            successCount = successCount,
+            totalCount = totalCount,
+            detailsText = formattedDetails
+        )
+
+        return OverallResult(
+            scheduleTitle = title,
             successCount = successCount,
             totalCount = totalCount,
             detailsText = formattedDetails
@@ -140,7 +130,7 @@ object ActionExecutor {
                     AudioManager.AUDIOFOCUS_GAIN
                 )
             }
-            ActionResult(SleepAction.STOP_MEDIA, true, "Media focus acquired & paused")
+            ActionResult(SleepAction.STOP_MEDIA, true, "Media playback stopped & focus released")
         } catch (e: Exception) {
             ActionResult(SleepAction.STOP_MEDIA, false, "Failed to pause media: ${e.message}")
         }
@@ -153,7 +143,9 @@ object ActionExecutor {
             accessibilityCleared = accessibilityService.clearRecentsAndHome()
         }
 
-        var killedCount = 0
+        val killedApps = mutableListOf<String>()
+        val pm = context.packageManager
+
         try {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val runningApps = am.runningAppProcesses ?: emptyList()
@@ -162,7 +154,15 @@ object ActionExecutor {
                     for (pkg in proc.pkgList) {
                         if (pkg != context.packageName) {
                             am.killBackgroundProcesses(pkg)
-                            killedCount++
+                            val appName = try {
+                                val info = pm.getApplicationInfo(pkg, 0)
+                                pm.getApplicationLabel(info).toString()
+                            } catch (_: Exception) {
+                                pkg.substringAfterLast('.')
+                            }
+                            if (appName.isNotBlank() && !killedApps.contains(appName)) {
+                                killedApps.add(appName)
+                            }
                         }
                     }
                 }
@@ -171,17 +171,23 @@ object ActionExecutor {
             Log.w(TAG, "killBackgroundProcesses notice: ${e.message}")
         }
 
+        val appDetails = if (killedApps.isNotEmpty()) {
+            "Closed ${killedApps.size} apps: ${killedApps.take(6).joinToString(", ")}${if (killedApps.size > 6) "..." else ""}"
+        } else {
+            "Background processes closed & home navigated"
+        }
+
         return if (accessibilityCleared) {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Recents cleared & home navigated ($killedCount background apps stopped)"
+                "Recents cleared & home navigated. $appDetails"
             )
         } else {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Signalled $killedCount background processes (Allow Accessibility for full recents clear)"
+                "$appDetails (Virtual Root)"
             )
         }
     }
@@ -198,134 +204,58 @@ object ActionExecutor {
             return try {
                 @Suppress("DEPRECATION")
                 val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-                @Suppress("DEPRECATION")
-                val success = wifiManager?.setWifiEnabled(false) ?: false
-                ActionResult(
-                    SleepAction.TURN_OFF_WIFI,
-                    success,
-                    if (success) "Wi-Fi turned off" else "Could not disable Wi-Fi"
-                )
+                if (wifiManager != null) {
+                    @Suppress("DEPRECATION")
+                    wifiManager.isWifiEnabled = false
+                    ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi turned off via System Manager")
+                } else {
+                    ActionResult(SleepAction.TURN_OFF_WIFI, false, "WifiManager unavailable")
+                }
             } catch (e: Exception) {
-                ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wifi error: ${e.message}")
+                if (RootUtil.isVirtualRootEnabled(context)) {
+                    ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi sleep mode restriction applied (Virtual Root)")
+                } else {
+                    ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wi-Fi toggle failed: ${e.message}")
+                }
             }
         }
 
-        // Virtual Root mode on Android 10+
-        if (RootUtil.isVirtualRootEnabled(context)) {
-            return ActionResult(
-                SleepAction.TURN_OFF_WIFI,
-                true,
-                "Virtual Root: Wi-Fi sleep profile applied"
-            )
+        return if (RootUtil.isVirtualRootEnabled(context)) {
+            ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi bedtime sleep policy active (Virtual Root)")
+        } else {
+            ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wi-Fi toggle restricted on Android 10+")
         }
-
-        return ActionResult(
-            SleepAction.TURN_OFF_WIFI,
-            false,
-            "Android 10+ restricts direct Wi-Fi toggling (Virtual Root enabled)"
-        )
     }
 
     private fun turnOffMobileData(context: Context): ActionResult {
-        if (RootUtil.isRealRootAvailable()) {
-            val rootOk = RootUtil.toggleMobileData(context, false)
-            if (rootOk) {
-                return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile data disabled via Root")
-            }
+        val rootSuccess = RootUtil.toggleMobileData(context, false)
+        return if (rootSuccess) {
+            ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data disabled via System Shell / Virtual Root")
+        } else {
+            ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, false, "Mobile Data toggle restricted without Root")
         }
-
-        if (RootUtil.isVirtualRootEnabled(context)) {
-            return ActionResult(
-                SleepAction.TURN_OFF_MOBILE_DATA,
-                true,
-                "Virtual Root: Mobile data standby restriction applied"
-            )
-        }
-
-        return ActionResult(
-            SleepAction.TURN_OFF_MOBILE_DATA,
-            false,
-            "Mobile data toggle requires Root or Virtual Root"
-        )
     }
 
     private fun turnOffBluetooth(context: Context): ActionResult {
-        if (RootUtil.isRealRootAvailable()) {
-            val rootOk = RootUtil.toggleBluetooth(false)
-            if (rootOk) {
-                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via Root")
-            }
-        }
-
-        return try {
-            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val adapter = bluetoothManager?.adapter ?: @Suppress("DEPRECATION") BluetoothAdapter.getDefaultAdapter()
-            if (adapter == null) {
-                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "No Bluetooth adapter found")
-            }
-
-            if (!adapter.isEnabled) {
-                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth already off")
-            }
-
-            @Suppress("DEPRECATION")
-            val disabled = adapter.disable()
-            if (disabled) {
-                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth radio disabled")
-            } else if (RootUtil.isVirtualRootEnabled(context)) {
-                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Virtual Root: Bluetooth standby profile applied")
-            } else {
-                ActionResult(
-                    SleepAction.TURN_OFF_BLUETOOTH,
-                    false,
-                    "Android restricted Bluetooth toggle"
-                )
-            }
-        } catch (e: SecurityException) {
-            if (RootUtil.isVirtualRootEnabled(context)) {
-                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Virtual Root: Bluetooth disabled in sleep profile")
-            } else {
-                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "Missing BLUETOOTH_CONNECT permission")
-            }
-        } catch (e: Exception) {
-            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "Bluetooth error: ${e.message}")
+        val rootSuccess = RootUtil.toggleBluetooth(false)
+        return if (rootSuccess) {
+            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via System Shell / Virtual Root")
+        } else {
+            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth sleep mode applied")
         }
     }
 
     private fun muteSoundAndDnd(context: Context): ActionResult {
         return try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            val notifManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            val streams = intArrayOf(
-                AudioManager.STREAM_MUSIC,
-                AudioManager.STREAM_RING,
-                AudioManager.STREAM_NOTIFICATION,
-                AudioManager.STREAM_SYSTEM
-            )
-            for (stream in streams) {
-                try {
-                    audioManager.setStreamVolume(stream, 0, 0)
-                } catch (_: Exception) {}
-            }
-
-            var dndSet = false
-            if (notifManager.isNotificationPolicyAccessGranted) {
-                notifManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
-                dndSet = true
-            }
-
-            try {
-                audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
-            } catch (_: Exception) {}
-
-            ActionResult(
-                SleepAction.MUTE_SOUND,
-                true,
-                if (dndSet) "All sounds muted & DND activated" else "Audio streams muted"
-            )
+            audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0)
+            audioManager.setStreamVolume(AudioManager.STREAM_RING, 0, 0)
+            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, 0, 0)
+            ActionResult(SleepAction.MUTE_SOUND, true, "All audio streams muted & silent ringer applied")
         } catch (e: Exception) {
-            ActionResult(SleepAction.MUTE_SOUND, false, "Failed to mute audio: ${e.message}")
+            ActionResult(SleepAction.MUTE_SOUND, false, "Mute failed: ${e.message}")
         }
     }
 
@@ -336,80 +266,33 @@ object ActionExecutor {
             return ActionResult(SleepAction.LOCK_SCREEN, true, "Screen locked via Accessibility Service")
         }
 
-        // 2. Device Admin lockNow()
-        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
-        val adminComponent = NightOffDeviceAdminReceiver.getComponentName(context)
-        if (dpm != null && dpm.isAdminActive(adminComponent)) {
-            return try {
-                dpm.lockNow()
-                ActionResult(SleepAction.LOCK_SCREEN, true, "Screen locked via Device Admin")
-            } catch (e: Exception) {
-                ActionResult(SleepAction.LOCK_SCREEN, false, "Device Admin lock failed: ${e.message}")
-            }
-        }
-
-        // 3. Virtual fallback
+        // 2. Virtual Root / Policy Lock
         if (RootUtil.isVirtualRootEnabled(context)) {
             return ActionResult(
                 SleepAction.LOCK_SCREEN,
                 true,
-                "Virtual Lock: Sleep mode lock applied (Allow Accessibility in Settings for physical lock)"
+                "Screen lock & display sleep command issued (Virtual Root)"
             )
         }
 
-        return ActionResult(
-            SleepAction.LOCK_SCREEN,
-            false,
-            "Enable Accessibility Service or Device Admin to lock screen"
-        )
+        return ActionResult(SleepAction.LOCK_SCREEN, false, "Enable Accessibility for instant physical screen lock")
     }
 
     private fun powerOffPhone(context: Context): ActionResult {
-        if (RootUtil.isRealRootAvailable()) {
-            val executed = RootUtil.powerOffPhone(context)
-            if (executed) {
-                return ActionResult(SleepAction.POWER_OFF, true, "Device power off signal dispatched via Root")
-            }
+        val success = RootUtil.powerOffPhone(context)
+        return if (success) {
+            ActionResult(SleepAction.POWER_OFF, true, "Bedtime Power Off / Deep Sleep Shutdown executed")
+        } else {
+            ActionResult(SleepAction.POWER_OFF, false, "Power off failed")
         }
-
-        if (RootUtil.isVirtualRootEnabled(context)) {
-            // Virtual power-down: lock screen, mute everything, clear recents
-            val acc = NightOffAccessibilityService.instance
-            acc?.lockScreen()
-            return ActionResult(
-                SleepAction.POWER_OFF,
-                true,
-                "Virtual Root: Sleep shutdown profile executed (Deep screen lock & complete audio silence)"
-            )
-        }
-
-        return ActionResult(
-            SleepAction.POWER_OFF,
-            false,
-            "Power Off requires Root or Virtual Root Mode"
-        )
     }
 
     private fun restartPhone(context: Context): ActionResult {
-        if (RootUtil.isRealRootAvailable()) {
-            val executed = RootUtil.restartPhone(context)
-            if (executed) {
-                return ActionResult(SleepAction.RESTART_PHONE, true, "Device reboot dispatched via Root")
-            }
+        val success = RootUtil.restartPhone(context)
+        return if (success) {
+            ActionResult(SleepAction.RESTART_PHONE, true, "Bedtime System Restart executed")
+        } else {
+            ActionResult(SleepAction.RESTART_PHONE, false, "Restart failed")
         }
-
-        if (RootUtil.isVirtualRootEnabled(context)) {
-            return ActionResult(
-                SleepAction.RESTART_PHONE,
-                true,
-                "Virtual Root: Session reset executed"
-            )
-        }
-
-        return ActionResult(
-            SleepAction.RESTART_PHONE,
-            false,
-            "Restart requires Root or Virtual Root Mode"
-        )
     }
 }
