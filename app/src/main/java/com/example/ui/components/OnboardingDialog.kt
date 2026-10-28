@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,12 +35,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.NightCard
-import com.example.ui.theme.NightCardBorder
-import com.example.ui.theme.NightPrimary
-import com.example.ui.theme.NightSurfaceVariant
-import com.example.ui.theme.NightTextPrimary
-import com.example.ui.theme.NightTextSecondary
+import com.example.ui.theme.LightCard
+import com.example.ui.theme.LightPrimary
+import com.example.ui.theme.LightSurfaceVariant
+import com.example.ui.theme.LightTextPrimary
+import com.example.ui.theme.LightTextSecondary
 
 @Composable
 fun OnboardingDialog(
@@ -55,7 +53,7 @@ fun OnboardingDialog(
                 Icon(
                     imageVector = Icons.Default.Bedtime,
                     contentDescription = null,
-                    tint = NightPrimary,
+                    tint = LightPrimary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -63,12 +61,12 @@ fun OnboardingDialog(
                     Text(
                         text = "Welcome to NightOff",
                         fontWeight = FontWeight.Bold,
-                        color = NightTextPrimary,
+                        color = LightTextPrimary,
                         fontSize = 20.sp
                     )
                     Text(
                         text = "Sleep shutdown automation",
-                        color = NightTextSecondary,
+                        color = LightTextSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -82,9 +80,9 @@ fun OnboardingDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "To pause media, silence calls, lock your screen, and protect your battery while you sleep, NightOff requires a few system permissions:",
+                    text = "To pause media, silence calls, lock your screen, and protect your battery while you sleep, NightOff uses a few system permissions:",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = NightTextSecondary,
+                        color = LightTextSecondary,
                         lineHeight = 18.sp
                     )
                 )
@@ -110,7 +108,7 @@ fun OnboardingDialog(
                 OnboardingPermissionRow(
                     icon = Icons.Default.Lock,
                     title = "Device Admin",
-                    desc = "Hardware-level immediate screen lock"
+                    desc = "Immediate hardware screen lock"
                 )
 
                 OnboardingPermissionRow(
@@ -129,13 +127,13 @@ fun OnboardingDialog(
         confirmButton = {
             Button(
                 onClick = onOpenPermissions,
-                colors = ButtonDefaults.buttonColors(containerColor = NightPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.testTag("onboarding_continue_button")
             ) {
                 Text(
                     text = "Open Permissions Checklist",
-                    color = Color(0xFF082F49),
+                    color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -143,13 +141,13 @@ fun OnboardingDialog(
         dismissButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = NightSurfaceVariant),
+                colors = ButtonDefaults.buttonColors(containerColor = LightSurfaceVariant),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(text = "Later", color = NightTextSecondary)
+                Text(text = "Later", color = LightTextSecondary)
             }
         },
-        containerColor = NightCard
+        containerColor = LightCard
     )
 }
 
@@ -166,12 +164,12 @@ private fun OnboardingPermissionRow(
         Surface(
             modifier = Modifier.size(34.dp),
             shape = RoundedCornerShape(8.dp),
-            color = NightSurfaceVariant
+            color = Color(0xFFE0F2FE)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = NightPrimary,
+                tint = LightPrimary,
                 modifier = Modifier.padding(7.dp)
             )
         }
@@ -180,12 +178,12 @@ private fun OnboardingPermissionRow(
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                color = NightTextPrimary,
+                color = LightTextPrimary,
                 fontSize = 13.sp
             )
             Text(
                 text = desc,
-                color = NightTextSecondary,
+                color = LightTextSecondary,
                 fontSize = 11.sp
             )
         }

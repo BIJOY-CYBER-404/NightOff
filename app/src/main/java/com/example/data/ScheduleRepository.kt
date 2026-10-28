@@ -56,6 +56,22 @@ class ScheduleRepository(
         }
     }
 
+    suspend fun snoozeActiveTimer(minutes: Int) {
+        val active = scheduleDao.getActiveQuickTimerSync() ?: return
+        AlarmScheduler.cancel(context, active.id)
+
+        val baseTime = if (active.targetTimeMillis > System.currentTimeMillis()) {
+            active.targetTimeMillis
+        } else {
+            System.currentTimeMillis()
+        }
+        val newTarget = baseTime + (minutes * 60 * 1000L)
+        val updated = active.copy(targetTimeMillis = newTarget)
+
+        scheduleDao.updateSchedule(updated)
+        AlarmScheduler.schedule(context, updated)
+    }
+
     suspend fun saveSchedule(schedule: NightSchedule): Long {
         val id = if (schedule.id == 0L) {
             scheduleDao.insertSchedule(schedule)

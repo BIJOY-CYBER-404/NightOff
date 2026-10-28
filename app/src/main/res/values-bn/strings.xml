@@ -21,6 +21,9 @@
     <string name="timer_remaining">বাকি আছে: %s</string>
     <string name="start_sleep_timer">স্লিপ টাইমার চালু করুন</string>
     <string name="cancel_timer">টাইমার বাতিল করুন</string>
+    <string name="snooze_title">বিলম্বিত করুন (স্নুজ)</string>
+    <string name="snooze_10_min">+১০ মি.</string>
+    <string name="snooze_30_min">+৩০ মি.</string>
     <string name="select_actions">ঘুমের সময় যা ঘটবে</string>
 
     <!-- Actions -->

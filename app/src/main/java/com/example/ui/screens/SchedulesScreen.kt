@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -37,7 +37,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -66,16 +65,15 @@ import com.example.R
 import com.example.model.NightSchedule
 import com.example.model.SleepAction
 import com.example.ui.components.ActionSelector
-import com.example.ui.theme.NightBackground
-import com.example.ui.theme.NightCard
-import com.example.ui.theme.NightCardBorder
-import com.example.ui.theme.NightError
-import com.example.ui.theme.NightPrimary
-import com.example.ui.theme.NightSecondary
-import com.example.ui.theme.NightSurfaceVariant
-import com.example.ui.theme.NightTextPrimary
-import com.example.ui.theme.NightTextSecondary
-import java.util.Calendar
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightCard
+import com.example.ui.theme.LightCardBorder
+import com.example.ui.theme.LightError
+import com.example.ui.theme.LightPrimary
+import com.example.ui.theme.LightSecondary
+import com.example.ui.theme.LightSurfaceVariant
+import com.example.ui.theme.LightTextPrimary
+import com.example.ui.theme.LightTextSecondary
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -97,26 +95,27 @@ fun SchedulesScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NightBackground)
+            .background(LightBackground),
+        contentAlignment = Alignment.TopCenter
     ) {
         if (savedNonQuickSchedules.isEmpty()) {
-            // Empty state
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .widthIn(max = 620.dp)
                     .padding(32.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = NightSurfaceVariant,
+                    color = LightSurfaceVariant,
                     modifier = Modifier.size(80.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Alarm,
                         contentDescription = null,
-                        tint = NightPrimary,
+                        tint = LightPrimary,
                         modifier = Modifier
                             .padding(20.dp)
                             .size(40.dp)
@@ -128,7 +127,7 @@ fun SchedulesScreen(
                 Text(
                     text = stringResource(R.string.no_schedules_yet),
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = NightTextSecondary,
+                        color = LightTextSecondary,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 )
@@ -140,15 +139,15 @@ fun SchedulesScreen(
                         editingSchedule = null
                         showDialog = true
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NightPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("add_first_schedule_button")
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF082F49))
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.add_schedule),
-                        color = Color(0xFF082F49),
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -156,7 +155,8 @@ fun SchedulesScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .widthIn(max = 620.dp)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -166,7 +166,7 @@ fun SchedulesScreen(
                         text = stringResource(R.string.schedules_title),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = NightTextPrimary
+                            color = LightTextPrimary
                         )
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -191,7 +191,6 @@ fun SchedulesScreen(
             }
         }
 
-        // Floating Action Button
         FloatingActionButton(
             onClick = {
                 editingSchedule = null
@@ -201,8 +200,8 @@ fun SchedulesScreen(
                 .align(Alignment.BottomEnd)
                 .padding(24.dp)
                 .testTag("add_schedule_fab"),
-            containerColor = NightPrimary,
-            contentColor = Color(0xFF082F49)
+            containerColor = LightPrimary,
+            contentColor = Color.White
         ) {
             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_schedule))
         }
@@ -243,12 +242,13 @@ private fun ScheduleCard(
             .testTag("schedule_card_${schedule.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (schedule.isEnabled) NightCard else NightSurfaceVariant.copy(alpha = 0.5f)
+            containerColor = if (schedule.isEnabled) LightCard else LightSurfaceVariant.copy(alpha = 0.6f)
         ),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (schedule.isEnabled) NightCardBorder else Color.Transparent
-        )
+            if (schedule.isEnabled) LightCardBorder else Color.Transparent
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (schedule.isEnabled) 1.dp else 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -265,13 +265,13 @@ private fun ScheduleCard(
                         text = timeFormatted,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = if (schedule.isEnabled) NightTextPrimary else NightTextSecondary
+                            color = if (schedule.isEnabled) LightTextPrimary else LightTextSecondary
                         )
                     )
                     Text(
                         text = schedule.title.ifBlank { "Bedtime Schedule" },
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = NightPrimary,
+                            color = LightPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -281,10 +281,10 @@ private fun ScheduleCard(
                     checked = schedule.isEnabled,
                     onCheckedChange = onToggle,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color(0xFF082F49),
-                        checkedTrackColor = NightPrimary,
-                        uncheckedThumbColor = NightTextSecondary,
-                        uncheckedTrackColor = NightSurfaceVariant
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = LightPrimary,
+                        uncheckedThumbColor = LightTextSecondary,
+                        uncheckedTrackColor = LightSurfaceVariant
                     ),
                     modifier = Modifier.testTag("schedule_switch_${schedule.id}")
                 )
@@ -292,12 +292,10 @@ private fun ScheduleCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Day indicators
             DaysOfWeekRow(scheduleDays = schedule.getDaysList())
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Action count & buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -305,7 +303,7 @@ private fun ScheduleCard(
             ) {
                 Text(
                     text = "${schedule.getActionList().size} actions configured",
-                    style = MaterialTheme.typography.bodySmall.copy(color = NightTextSecondary)
+                    style = MaterialTheme.typography.bodySmall.copy(color = LightTextSecondary)
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -316,7 +314,7 @@ private fun ScheduleCard(
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = "Run now",
-                            tint = NightSecondary,
+                            tint = LightPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -328,7 +326,7 @@ private fun ScheduleCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit",
-                            tint = NightTextSecondary,
+                            tint = LightTextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -340,7 +338,7 @@ private fun ScheduleCard(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete",
-                            tint = NightError,
+                            tint = LightError,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -371,14 +369,14 @@ private fun DaysOfWeekRow(scheduleDays: Set<Int>) {
             Surface(
                 modifier = Modifier.size(30.dp),
                 shape = CircleShape,
-                color = if (isActive) NightPrimary.copy(alpha = 0.25f) else Color(0xFF1E293B)
+                color = if (isActive) Color(0xFFE0F2FE) else LightSurfaceVariant
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = label,
                         fontSize = 12.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isActive) NightPrimary else NightTextSecondary
+                        color = if (isActive) LightPrimary else LightTextSecondary
                     )
                 }
             }
@@ -412,7 +410,7 @@ private fun ScheduleEditDialog(
             Text(
                 text = if (initialSchedule == null) stringResource(R.string.add_schedule) else stringResource(R.string.edit_schedule),
                 fontWeight = FontWeight.Bold,
-                color = NightTextPrimary
+                color = LightTextPrimary
             )
         },
         text = {
@@ -428,13 +426,12 @@ private fun ScheduleEditDialog(
                     label = { Text(stringResource(R.string.schedule_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NightPrimary,
-                        unfocusedBorderColor = NightCardBorder
+                        focusedBorderColor = LightPrimary,
+                        unfocusedBorderColor = LightCardBorder
                     ),
                     singleLine = true
                 )
 
-                // Time Picker
                 Box(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
@@ -442,19 +439,18 @@ private fun ScheduleEditDialog(
                     TimePicker(
                         state = timePickerState,
                         colors = TimePickerDefaults.colors(
-                            clockDialColor = NightSurfaceVariant,
-                            selectorColor = NightPrimary,
-                            containerColor = NightCard
+                            clockDialColor = LightSurfaceVariant,
+                            selectorColor = LightPrimary,
+                            containerColor = LightCard
                         )
                     )
                 }
 
-                // Days selector
                 Text(
                     text = stringResource(R.string.days_repeat),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = NightTextPrimary
+                        color = LightTextPrimary
                     )
                 )
 
@@ -474,26 +470,25 @@ private fun ScheduleEditDialog(
                                     selectedDays = if (isSelected) selectedDays - iso else selectedDays + iso
                                 },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) NightPrimary else NightSurfaceVariant
+                            color = if (isSelected) LightPrimary else LightSurfaceVariant
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = label,
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) Color(0xFF082F49) else NightTextPrimary
+                                    color = if (isSelected) Color.White else LightTextPrimary
                                 )
                             }
                         }
                     }
                 }
 
-                // Action toggles
                 Text(
                     text = stringResource(R.string.select_actions),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = NightTextPrimary
+                        color = LightTextPrimary
                     )
                 )
 
@@ -532,21 +527,21 @@ private fun ScheduleEditDialog(
 
                     onSave(scheduleToSave)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = NightPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 modifier = Modifier.testTag("save_schedule_button")
             ) {
                 Text(
                     text = stringResource(R.string.save),
-                    color = Color(0xFF082F49),
+                    color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.cancel), color = NightTextSecondary)
+                Text(text = stringResource(R.string.cancel), color = LightTextSecondary)
             }
         },
-        containerColor = NightCard
+        containerColor = LightCard
     )
 }

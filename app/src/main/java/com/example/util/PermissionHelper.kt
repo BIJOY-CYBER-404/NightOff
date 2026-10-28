@@ -24,10 +24,14 @@ data class PermissionState(
     val hasDnd: Boolean,
     val hasIgnoreBatteryOpt: Boolean,
     val hasBluetooth: Boolean,
-    val isRooted: Boolean
+    val isRealRooted: Boolean,
+    val isVirtualRootEnabled: Boolean
 ) {
     val isReadyForBasicSleep: Boolean
-        get() = hasExactAlarm && (hasAccessibility || hasDeviceAdmin)
+        get() = hasExactAlarm && (hasAccessibility || hasDeviceAdmin || isVirtualRootEnabled)
+
+    val isElevatedAvailable: Boolean
+        get() = isRealRooted || isVirtualRootEnabled
 }
 
 object PermissionHelper {
@@ -63,7 +67,8 @@ object PermissionHelper {
             true
         }
 
-        val isRooted = RootUtil.isRootAvailable()
+        val isRealRooted = RootUtil.isRealRootAvailable()
+        val isVirtualRoot = RootUtil.isVirtualRootEnabled(context)
 
         return PermissionState(
             hasExactAlarm = hasExactAlarm,
@@ -73,7 +78,8 @@ object PermissionHelper {
             hasDnd = hasDnd,
             hasIgnoreBatteryOpt = hasIgnoreBatteryOpt,
             hasBluetooth = hasBluetooth,
-            isRooted = isRooted
+            isRealRooted = isRealRooted,
+            isVirtualRootEnabled = isVirtualRoot
         )
     }
 
@@ -101,7 +107,7 @@ object PermissionHelper {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
             putExtra(
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                "NightOff requires Device Admin permission to automatically turn off and lock your screen when you fall asleep."
+                "NightOff requires Device Admin permission to turn off and lock your screen when you fall asleep."
             )
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }

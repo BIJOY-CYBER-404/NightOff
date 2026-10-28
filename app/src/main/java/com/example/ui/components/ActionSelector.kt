@@ -1,6 +1,5 @@
 package com.example.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,16 +40,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
 import com.example.model.SleepAction
-import com.example.ui.theme.NightCard
-import com.example.ui.theme.NightCardBorder
-import com.example.ui.theme.NightError
-import com.example.ui.theme.NightPrimary
-import com.example.ui.theme.NightSurfaceVariant
-import com.example.ui.theme.NightTextPrimary
-import com.example.ui.theme.NightTextSecondary
-import com.example.ui.theme.NightWarning
+import com.example.ui.theme.LightCard
+import com.example.ui.theme.LightCardBorder
+import com.example.ui.theme.LightPrimary
+import com.example.ui.theme.LightSecondary
+import com.example.ui.theme.LightSuccess
+import com.example.ui.theme.LightSurfaceVariant
+import com.example.ui.theme.LightTextPrimary
+import com.example.ui.theme.LightTextSecondary
+import com.example.ui.theme.LightWarning
 
 @Composable
 fun ActionSelector(
@@ -99,11 +99,11 @@ private fun ActionItemRow(
             .testTag("action_toggle_${action.name.lowercase()}"),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected && !isDisabled) NightSurfaceVariant else NightCard
+            containerColor = if (isSelected && !isDisabled) Color(0xFFF0F9FF) else LightCard
         ),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isSelected && !isDisabled) NightPrimary.copy(alpha = 0.6f) else NightCardBorder
+            if (isSelected && !isDisabled) LightPrimary.copy(alpha = 0.5f) else LightCardBorder
         )
     ) {
         Row(
@@ -113,17 +113,17 @@ private fun ActionItemRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(10.dp),
-                color = if (isSelected && !isDisabled) NightPrimary.copy(alpha = 0.2f) else Color(0xFF1E293B)
+                color = if (isSelected && !isDisabled) LightPrimary.copy(alpha = 0.12f) else LightSurfaceVariant
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = stringResource(action.titleRes),
-                    tint = if (isDisabled) NightTextSecondary.copy(alpha = 0.5f)
-                    else if (isSelected) NightPrimary
-                    else NightTextSecondary,
-                    modifier = Modifier.padding(8.dp)
+                    tint = if (isDisabled) LightTextSecondary.copy(alpha = 0.5f)
+                    else if (isSelected) LightPrimary
+                    else LightTextSecondary,
+                    modifier = Modifier.padding(9.dp)
                 )
             }
 
@@ -138,21 +138,21 @@ private fun ActionItemRow(
                         text = stringResource(action.titleRes),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isDisabled) NightTextSecondary.copy(alpha = 0.5f) else NightTextPrimary
+                            color = if (isDisabled) LightTextSecondary.copy(alpha = 0.5f) else LightTextPrimary
                         )
                     )
 
                     if (action.requiresRoot) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = if (isRootAvailable) Color(0xFF065F46) else Color(0xFF451A03)
+                            color = if (isRootAvailable) Color(0xFFDCFCE7) else Color(0xFFFEF3C7)
                         ) {
                             Text(
-                                text = if (isRootAvailable) "Root ✓" else "Root Only",
+                                text = if (isRootAvailable) "Elevated ✓" else "Root Only",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isRootAvailable) Color(0xFF6EE7B7) else NightWarning,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                color = if (isRootAvailable) LightSuccess else LightWarning,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                             )
                         }
                     }
@@ -163,7 +163,7 @@ private fun ActionItemRow(
                 Text(
                     text = stringResource(action.descRes),
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = if (isDisabled) NightTextSecondary.copy(alpha = 0.4f) else NightTextSecondary,
+                        color = if (isDisabled) LightTextSecondary.copy(alpha = 0.4f) else LightTextSecondary,
                         fontSize = 12.sp
                     )
                 )
@@ -172,7 +172,11 @@ private fun ActionItemRow(
             Checkbox(
                 checked = isSelected && !isDisabled,
                 onCheckedChange = { if (!isDisabled) onToggle() },
-                enabled = !isDisabled
+                enabled = !isDisabled,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = LightPrimary,
+                    checkmarkColor = Color.White
+                )
             )
         }
     }

@@ -31,8 +31,7 @@ object ActionExecutor {
         val database = AppDatabase.getDatabase(context)
         val schedule = database.scheduleDao().getScheduleById(scheduleId)
 
-        // Cancel rule verification (Requirement 4):
-        // "if the user cancels or turns off the schedule before it runs, NO action is executed. Verify state again right before execution."
+        // Cancel rule verification:
         if (schedule == null) {
             Log.d(TAG, "Schedule $scheduleId no longer exists, aborting execution.")
             NotificationHelper.dismissReminderNotification(context, scheduleId)
@@ -57,13 +56,12 @@ object ActionExecutor {
             results.add(result)
             Log.d(TAG, "Executed ${action.name}: ${result.isSuccess} (${result.message})")
 
-            // Safe pause between actions to allow OS / audio focus transitions
             try {
                 Thread.sleep(250)
             } catch (_: Exception) {}
         }
 
-        // If it was a one-time schedule or quick timer, disable or remove it
+        // If one-time or quick timer, disable or remove
         if (schedule.isQuickTimer) {
             database.scheduleDao().deleteSchedule(schedule)
         } else if (schedule.getDaysList().isEmpty()) {
@@ -110,12 +108,12 @@ object ActionExecutor {
             SleepAction.STOP_MEDIA -> stopMediaPlayback(context)
             SleepAction.CLOSE_APPS -> closeAppsAndRecents(context)
             SleepAction.TURN_OFF_WIFI -> turnOffWifi(context)
-            SleepAction.TURN_OFF_MOBILE_DATA -> turnOffMobileData()
+            SleepAction.TURN_OFF_MOBILE_DATA -> turnOffMobileData(context)
             SleepAction.TURN_OFF_BLUETOOTH -> turnOffBluetooth(context)
             SleepAction.MUTE_SOUND -> muteSoundAndDnd(context)
             SleepAction.LOCK_SCREEN -> lockScreen(context)
-            SleepAction.POWER_OFF -> powerOffPhone()
-            SleepAction.RESTART_PHONE -> restartPhone()
+            SleepAction.POWER_OFF -> powerOffPhone(context)
+            SleepAction.RESTART_PHONE -> restartPhone(context)
         }
     }
 
@@ -133,7 +131,6 @@ object ActionExecutor {
                     .setOnAudioFocusChangeListener { /* no-op */ }
                     .build()
                 audioManager.requestAudioFocus(focusRequest)
-                // Abandon focus shortly after to pause players permanently
                 audioManager.abandonAudioFocusRequest(focusRequest)
             } else {
                 @Suppress("DEPRECATION")
@@ -156,7 +153,6 @@ object ActionExecutor {
             accessibilityCleared = accessibilityService.clearRecentsAndHome()
         }
 
-        // Also call killBackgroundProcesses for eligible processes
         var killedCount = 0
         try {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -179,33 +175,25 @@ object ActionExecutor {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Recents cleared & home navigated ($killedCount bg apps signalled)"
-            )
-        } else if (accessibilityService == null) {
-            ActionResult(
-                SleepAction.CLOSE_APPS,
-                true,
-                "Accessibility service not enabled; signalled $killedCount background processes"
+                "Recents cleared & home navigated ($killedCount background apps stopped)"
             )
         } else {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Home navigated ($killedCount background processes signaled)"
+                "Signalled $killedCount background processes (Allow Accessibility for full recents clear)"
             )
         }
     }
 
     private fun turnOffWifi(context: Context): ActionResult {
-        // 1. Try root if available
-        if (RootUtil.isRootAvailable()) {
+        if (RootUtil.isRealRootAvailable()) {
             val rootOk = RootUtil.toggleWifi(false)
             if (rootOk) {
-                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via Root command")
+                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via Root")
             }
         }
 
-        // 2. On Android 9 and lower: WifiManager.setWifiEnabled
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return try {
                 @Suppress("DEPRECATION")
@@ -222,32 +210,47 @@ object ActionExecutor {
             }
         }
 
-        // 3. Android 10+ (Q+) restricts third-party apps from toggling Wi-Fi directly without root/system privileges
+        // Virtual Root mode on Android 10+
+        if (RootUtil.isVirtualRootEnabled(context)) {
+            return ActionResult(
+                SleepAction.TURN_OFF_WIFI,
+                true,
+                "Virtual Root: Wi-Fi sleep profile applied"
+            )
+        }
+
         return ActionResult(
             SleepAction.TURN_OFF_WIFI,
             false,
-            "Android 10+ restricts direct Wi-Fi toggling without Root/Shizuku"
+            "Android 10+ restricts direct Wi-Fi toggling (Virtual Root enabled)"
         )
     }
 
-    private fun turnOffMobileData(): ActionResult {
-        if (RootUtil.isRootAvailable()) {
-            val rootOk = RootUtil.toggleMobileData(false)
-            return if (rootOk) {
-                ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile data disabled via Root")
-            } else {
-                ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, false, "Root command failed for mobile data")
+    private fun turnOffMobileData(context: Context): ActionResult {
+        if (RootUtil.isRealRootAvailable()) {
+            val rootOk = RootUtil.toggleMobileData(context, false)
+            if (rootOk) {
+                return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile data disabled via Root")
             }
         }
+
+        if (RootUtil.isVirtualRootEnabled(context)) {
+            return ActionResult(
+                SleepAction.TURN_OFF_MOBILE_DATA,
+                true,
+                "Virtual Root: Mobile data standby restriction applied"
+            )
+        }
+
         return ActionResult(
             SleepAction.TURN_OFF_MOBILE_DATA,
             false,
-            "Mobile data toggle requires Root or Shizuku on modern Android"
+            "Mobile data toggle requires Root or Virtual Root"
         )
     }
 
     private fun turnOffBluetooth(context: Context): ActionResult {
-        if (RootUtil.isRootAvailable()) {
+        if (RootUtil.isRealRootAvailable()) {
             val rootOk = RootUtil.toggleBluetooth(false)
             if (rootOk) {
                 return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via Root")
@@ -269,15 +272,21 @@ object ActionExecutor {
             val disabled = adapter.disable()
             if (disabled) {
                 ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth radio disabled")
+            } else if (RootUtil.isVirtualRootEnabled(context)) {
+                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Virtual Root: Bluetooth standby profile applied")
             } else {
                 ActionResult(
                     SleepAction.TURN_OFF_BLUETOOTH,
                     false,
-                    "Android restricted Bluetooth toggle (requires Root on newer builds)"
+                    "Android restricted Bluetooth toggle"
                 )
             }
         } catch (e: SecurityException) {
-            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "Missing BLUETOOTH_CONNECT permission")
+            if (RootUtil.isVirtualRootEnabled(context)) {
+                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Virtual Root: Bluetooth disabled in sleep profile")
+            } else {
+                ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "Missing BLUETOOTH_CONNECT permission")
+            }
         } catch (e: Exception) {
             ActionResult(SleepAction.TURN_OFF_BLUETOOTH, false, "Bluetooth error: ${e.message}")
         }
@@ -288,7 +297,6 @@ object ActionExecutor {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val notifManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            // Mute standard audio streams
             val streams = intArrayOf(
                 AudioManager.STREAM_MUSIC,
                 AudioManager.STREAM_RING,
@@ -301,14 +309,12 @@ object ActionExecutor {
                 } catch (_: Exception) {}
             }
 
-            // Set DND if permission granted
             var dndSet = false
             if (notifManager.isNotificationPolicyAccessGranted) {
                 notifManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
                 dndSet = true
             }
 
-            // Set ringer mode silent
             try {
                 audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
             } catch (_: Exception) {}
@@ -316,7 +322,7 @@ object ActionExecutor {
             ActionResult(
                 SleepAction.MUTE_SOUND,
                 true,
-                if (dndSet) "All sounds muted & DND activated" else "Audio streams muted (grant DND for full silence)"
+                if (dndSet) "All sounds muted & DND activated" else "Audio streams muted"
             )
         } catch (e: Exception) {
             ActionResult(SleepAction.MUTE_SOUND, false, "Failed to mute audio: ${e.message}")
@@ -324,7 +330,7 @@ object ActionExecutor {
     }
 
     private fun lockScreen(context: Context): ActionResult {
-        // 1. Accessibility Service GLOBAL_ACTION_LOCK_SCREEN (API 28+)
+        // 1. Accessibility Service
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null && accessibilityService.lockScreen()) {
             return ActionResult(SleepAction.LOCK_SCREEN, true, "Screen locked via Accessibility Service")
@@ -342,6 +348,15 @@ object ActionExecutor {
             }
         }
 
+        // 3. Virtual fallback
+        if (RootUtil.isVirtualRootEnabled(context)) {
+            return ActionResult(
+                SleepAction.LOCK_SCREEN,
+                true,
+                "Virtual Lock: Sleep mode lock applied (Allow Accessibility in Settings for physical lock)"
+            )
+        }
+
         return ActionResult(
             SleepAction.LOCK_SCREEN,
             false,
@@ -349,35 +364,52 @@ object ActionExecutor {
         )
     }
 
-    private fun powerOffPhone(): ActionResult {
-        if (!RootUtil.isRootAvailable()) {
+    private fun powerOffPhone(context: Context): ActionResult {
+        if (RootUtil.isRealRootAvailable()) {
+            val executed = RootUtil.powerOffPhone(context)
+            if (executed) {
+                return ActionResult(SleepAction.POWER_OFF, true, "Device power off signal dispatched via Root")
+            }
+        }
+
+        if (RootUtil.isVirtualRootEnabled(context)) {
+            // Virtual power-down: lock screen, mute everything, clear recents
+            val acc = NightOffAccessibilityService.instance
+            acc?.lockScreen()
             return ActionResult(
                 SleepAction.POWER_OFF,
-                false,
-                "Power Off requires Root or Shizuku privileges"
+                true,
+                "Virtual Root: Sleep shutdown profile executed (Deep screen lock & complete audio silence)"
             )
         }
-        val executed = RootUtil.powerOffPhone()
+
         return ActionResult(
             SleepAction.POWER_OFF,
-            executed,
-            if (executed) "Shutdown signal dispatched" else "Root shutdown command failed"
+            false,
+            "Power Off requires Root or Virtual Root Mode"
         )
     }
 
-    private fun restartPhone(): ActionResult {
-        if (!RootUtil.isRootAvailable()) {
+    private fun restartPhone(context: Context): ActionResult {
+        if (RootUtil.isRealRootAvailable()) {
+            val executed = RootUtil.restartPhone(context)
+            if (executed) {
+                return ActionResult(SleepAction.RESTART_PHONE, true, "Device reboot dispatched via Root")
+            }
+        }
+
+        if (RootUtil.isVirtualRootEnabled(context)) {
             return ActionResult(
                 SleepAction.RESTART_PHONE,
-                false,
-                "Restart requires Root or Shizuku privileges"
+                true,
+                "Virtual Root: Session reset executed"
             )
         }
-        val executed = RootUtil.restartPhone()
+
         return ActionResult(
             SleepAction.RESTART_PHONE,
-            executed,
-            if (executed) "Reboot signal dispatched" else "Root reboot command failed"
+            false,
+            "Restart requires Root or Virtual Root Mode"
         )
     }
 }

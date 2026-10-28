@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -43,16 +42,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.model.ExecutionLog
-import com.example.ui.theme.NightBackground
-import com.example.ui.theme.NightCard
-import com.example.ui.theme.NightCardBorder
-import com.example.ui.theme.NightError
-import com.example.ui.theme.NightPrimary
-import com.example.ui.theme.NightSuccess
-import com.example.ui.theme.NightSurfaceVariant
-import com.example.ui.theme.NightTextPrimary
-import com.example.ui.theme.NightTextSecondary
-import com.example.ui.theme.NightWarning
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightCard
+import com.example.ui.theme.LightCardBorder
+import com.example.ui.theme.LightError
+import com.example.ui.theme.LightPrimary
+import com.example.ui.theme.LightSuccess
+import com.example.ui.theme.LightSurfaceVariant
+import com.example.ui.theme.LightTextPrimary
+import com.example.ui.theme.LightTextSecondary
+import com.example.ui.theme.LightWarning
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,25 +65,27 @@ fun HistoryScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NightBackground)
+            .background(LightBackground),
+        contentAlignment = Alignment.TopCenter
     ) {
         if (logs.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .widthIn(max = 620.dp)
                     .padding(32.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = NightSurfaceVariant,
+                    color = LightSurfaceVariant,
                     modifier = Modifier.size(80.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.History,
                         contentDescription = null,
-                        tint = NightPrimary,
+                        tint = LightPrimary,
                         modifier = Modifier
                             .padding(20.dp)
                             .size(40.dp)
@@ -96,7 +97,7 @@ fun HistoryScreen(
                 Text(
                     text = stringResource(R.string.no_history_yet),
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = NightTextSecondary,
+                        color = LightTextSecondary,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 )
@@ -104,7 +105,8 @@ fun HistoryScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .widthIn(max = 620.dp)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -120,19 +122,19 @@ fun HistoryScreen(
                                 text = stringResource(R.string.history_title),
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = NightTextPrimary
+                                    color = LightTextPrimary
                                 )
                             )
                             Text(
                                 text = "${logs.size} total executions",
-                                style = MaterialTheme.typography.bodySmall.copy(color = NightTextSecondary)
+                                style = MaterialTheme.typography.bodySmall.copy(color = LightTextSecondary)
                             )
                         }
 
                         OutlinedButton(
                             onClick = onClearHistory,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NightError),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = LightError),
                             modifier = Modifier.testTag("clear_history_button")
                         ) {
                             Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -161,9 +163,9 @@ private fun LogCard(log: ExecutionLog) {
     val formattedDate = dateFormat.format(Date(log.timestamp))
 
     val statusColor = when (log.status) {
-        "SUCCESS" -> NightSuccess
-        "PARTIAL" -> NightWarning
-        else -> NightError
+        "SUCCESS" -> LightSuccess
+        "PARTIAL" -> LightWarning
+        else -> LightError
     }
 
     val statusIcon = when (log.status) {
@@ -183,8 +185,9 @@ private fun LogCard(log: ExecutionLog) {
             .fillMaxWidth()
             .testTag("log_card_${log.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NightCard),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NightCardBorder)
+        colors = CardDefaults.cardColors(containerColor = LightCard),
+        border = androidx.compose.foundation.BorderStroke(1.dp, LightCardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -201,18 +204,18 @@ private fun LogCard(log: ExecutionLog) {
                         text = log.scheduleTitle,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = NightTextPrimary
+                            color = LightTextPrimary
                         )
                     )
                     Text(
                         text = formattedDate,
-                        style = MaterialTheme.typography.bodySmall.copy(color = NightTextSecondary)
+                        style = MaterialTheme.typography.bodySmall.copy(color = LightTextSecondary)
                     )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.15f)
+                    color = statusColor.copy(alpha = 0.12f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -239,7 +242,7 @@ private fun LogCard(log: ExecutionLog) {
 
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = NightSurfaceVariant,
+                color = LightSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -247,14 +250,14 @@ private fun LogCard(log: ExecutionLog) {
                         text = "Results: ${log.successActions}/${log.totalActions} actions succeeded",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = NightPrimary
+                            color = LightPrimary
                         )
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = log.actionResultsFormatted,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = NightTextPrimary.copy(alpha = 0.85f),
+                            color = LightTextPrimary,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             lineHeight = 16.sp

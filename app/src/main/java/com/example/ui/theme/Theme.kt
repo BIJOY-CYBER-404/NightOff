@@ -1,38 +1,37 @@
 package com.example.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val NightDarkColorScheme = darkColorScheme(
-    primary = NightPrimary,
-    onPrimary = NightOnPrimary,
-    primaryContainer = NightPrimaryContainer,
-    onPrimaryContainer = NightOnPrimaryContainer,
-    secondary = NightSecondary,
-    onSecondary = NightOnSecondary,
-    secondaryContainer = NightSecondaryContainer,
-    onSecondaryContainer = NightOnSecondaryContainer,
-    tertiary = NightTertiary,
-    onTertiary = NightOnTertiary,
-    background = NightBackground,
-    onBackground = NightTextPrimary,
-    surface = NightSurface,
-    onSurface = NightTextPrimary,
-    surfaceVariant = NightSurfaceVariant,
-    onSurfaceVariant = NightTextSecondary,
-    error = NightError,
-    onError = Color(0xFF4C0519)
+private val M3LightColorScheme = lightColorScheme(
+    primary = LightPrimary,
+    onPrimary = LightOnPrimary,
+    primaryContainer = LightPrimaryContainer,
+    onPrimaryContainer = LightOnPrimaryContainer,
+    secondary = LightSecondary,
+    onSecondary = LightOnSecondary,
+    secondaryContainer = LightSecondaryContainer,
+    onSecondaryContainer = LightOnSecondaryContainer,
+    tertiary = LightTertiary,
+    onTertiary = LightOnTertiary,
+    background = LightBackground,
+    onBackground = LightTextPrimary,
+    surface = LightSurface,
+    onSurface = LightTextPrimary,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightTextSecondary,
+    error = LightError,
+    onError = Color.White
 )
 
 @Composable
 fun NightOffTheme(
     content: @Composable () -> Unit
 ) {
-    // NightOff is deliberately dark-first for bedtime comfort and AMOLED battery savings
     MaterialTheme(
-        colorScheme = NightDarkColorScheme,
+        colorScheme = M3LightColorScheme,
         typography = Typography,
         content = content
     )
