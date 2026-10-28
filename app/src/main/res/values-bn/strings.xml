@@ -1,0 +1,104 @@
+<resources>
+    <string name="app_name">NightOff</string>
+    <string name="app_full_name">NightOff – স্লিপ শাটডাউন শিডিউলার</string>
+    <string name="app_tagline">ঘুমিয়ে পড়লে স্বয়ংক্রিয় বন্ধকরণ</string>
+    <string name="accessibility_service_description">NightOff এক্সেসিবিলিটি সার্ভিস ব্যবহার করে কেবল নির্ধারিত সময়ে মিডিয়া বন্ধ করতে, রিসেন্ট অ্যাপস সাফ করতে, স্ক্রিন লক করতে এবং স্লিপ অ্যাকশন সম্পাদন করতে।</string>
+
+    <!-- Navigation -->
+    <string name="nav_timer">টাইমার</string>
+    <string name="nav_schedules">শিডিউল</string>
+    <string name="nav_permissions">অনুমতিসমূহ</string>
+    <string name="nav_history">ইতিহাস</string>
+
+    <!-- Timer Tab -->
+    <string name="quick_timer_title">স্লিপ টাইমার</string>
+    <string name="quick_timer_desc">ঘুমিয়ে পড়লে ফোনকে স্বয়ংক্রিয়ভাবে নীরব ও সুরক্ষিত করুন</string>
+    <string name="preset_15_min">১৫ মি.</string>
+    <string name="preset_30_min">৩০ মি.</string>
+    <string name="preset_60_min">১ ঘ.</string>
+    <string name="preset_custom">কাস্টম</string>
+    <string name="timer_running">টাইমার চলছে</string>
+    <string name="timer_remaining">বাকি আছে: %s</string>
+    <string name="start_sleep_timer">স্লিপ টাইমার চালু করুন</string>
+    <string name="cancel_timer">টাইমার বাতিল করুন</string>
+    <string name="select_actions">ঘুমের সময় যা ঘটবে</string>
+
+    <!-- Actions -->
+    <string name="action_stop_media">মিডিয়া প্লেব্যাক বন্ধ করুন</string>
+    <string name="action_stop_media_desc">গান, পডকাস্ট এবং ভিডিও থামিয়ে দেয়</string>
+    <string name="action_close_apps">অ্যাপ বন্ধ ও রিসেন্ট সাফ করুন</string>
+    <string name="action_close_apps_desc">রিসেন্ট অ্যাপস তালিকা এবং ব্যাকগ্রাউন্ড অ্যাপ মুছে দেয়</string>
+    <string name="action_turn_off_wifi">ওয়াই-ফাই বন্ধ করুন</string>
+    <string name="action_turn_off_wifi_desc">ওয়াই-ফাই বন্ধ করে অথবা সেটিংস প্যানেল দেখায়</string>
+    <string name="action_turn_off_mobile_data">মোবাইল ডাটা বন্ধ করুন</string>
+    <string name="action_turn_off_mobile_data_desc">সেলুলার ডাটা সংযোগ বন্ধ করে</string>
+    <string name="action_turn_off_bluetooth">ব্লুটুথ বন্ধ করুন</string>
+    <string name="action_turn_off_bluetooth_desc">ব্যাটারি বাঁচাতে ব্লুটুথ সংযোগ বন্ধ করে</string>
+    <string name="action_mute_sound">মিউট ও ডু-নট-ডিস্টার্ব</string>
+    <string name="action_mute_sound_desc">রিংটোন, মিডিয়া এবং নোটিফিকেশনের শব্দ নীরব করে</string>
+    <string name="action_lock_screen">স্ক্রিন লক করুন</string>
+    <string name="action_lock_screen_desc">ডিভাইস অ্যাডমিন বা এক্সেসিবিলিটি দিয়ে সাথে সাথে লক করে</string>
+    <string name="action_power_off">ফোন বন্ধ করুন (Power Off)</string>
+    <string name="action_power_off_desc">ফোন সম্পূর্ণ বন্ধ করে (রুট বা Shizuku প্রয়োজন)</string>
+    <string name="action_restart">ফোন রিস্টার্ট করুন</string>
+    <string name="action_restart_desc">ফোন পুনরায় চালু করে (রুট বা Shizuku প্রয়োজন)</string>
+
+    <!-- Root / Shizuku Explanation -->
+    <string name="root_required_badge">রুট / Shizuku প্রয়োজন</string>
+    <string name="root_explanation">অ্যান্ড্রয়েড নিরাপত্তা নীতির কারণে সাধারণ কোনো অ্যাপ রুট (su) বা Shizuku ছাড়া ফোন বন্ধ বা রিস্টার্ট করতে পারে না। রুট থাকলে NightOff সরাসরি তা ব্যবহার করে।</string>
+    <string name="root_detected">রুট অ্যাক্সেস: সচল আছে</string>
+    <string name="root_not_detected">রুট অ্যাক্সেস: নেই (পাওয়ার অফ/রিস্টার্ট নিষ্ক্রিয়)</string>
+
+    <!-- Permissions Checklist -->
+    <string name="permissions_title">অনুমতি ও প্রস্তুতি</string>
+    <string name="permissions_subtitle">ব্যাকগ্রাউন্ডে স্বয়ংক্রিয় কাজের জন্য প্রয়োজনীয়</string>
+    <string name="perm_exact_alarm">সঠিক অ্যালার্ম (Exact Alarms)</string>
+    <string name="perm_exact_alarm_desc">ঘুমানোর সময় সঠিক মুহূর্তে অ্যাকশন চালানোর অনুমতি</string>
+    <string name="perm_notifications">নোটিফিকেশন</string>
+    <string name="perm_notifications_desc">১০ মিনিট আগের সতর্কবার্তা এবং ফলাফল দেখানোর জন্য</string>
+    <string name="perm_accessibility">এক্সেসিবিলিটি সার্ভিস</string>
+    <string name="perm_accessibility_desc">স্ক্রিন লক, রিসেন্ট অ্যাপস সাফ এবং মিডিয়া বন্ধের জন্য</string>
+    <string name="perm_device_admin">ডিভাইস অ্যাডমিন</string>
+    <string name="perm_device_admin_desc">স্ক্রিন তাত্ক্ষণিকভাবে লক করার অন্যতম পদ্ধতি</string>
+    <string name="perm_dnd">ডু নট ডিস্টার্ব অ্যাক্সেস</string>
+    <string name="perm_dnd_desc">ফোনকে সাইলেন্ট অথবা বিরক্ত করবেন না মোডে নেওয়ার জন্য</string>
+    <string name="perm_battery_opt">ব্যাটারি অপ্টিমাইজেশন উপেক্ষা</string>
+    <string name="perm_battery_opt_desc">ডিপ স্লিপে অ্যালার্ম বিলম্বিত হওয়া রোধ করতে</string>
+    <string name="perm_bluetooth">ব্লুটুথ অনুমতি</string>
+    <string name="perm_bluetooth_desc">ব্লুটুথ বন্ধ করার জন্য প্রয়োজনীয়</string>
+    <string name="btn_grant">অনুমতি দিন</string>
+    <string name="btn_granted">অনুমোদিত</string>
+    <string name="btn_configure">সেটিংস</string>
+
+    <!-- Notification Strings -->
+    <string name="reminder_title">স্লিপ টাইমার সতর্কবার্তা</string>
+    <string name="reminder_message">NightOff ১০ মিনিটের মধ্যে (%s) স্লিপ অ্যাকশন চালাবে।</string>
+    <string name="action_btn_cancel">বাতিল</string>
+    <string name="action_btn_delay_10">১০ মিনিট বিলম্ব</string>
+    <string name="action_btn_run_now">এখনই চালান</string>
+    <string name="execution_result_title">NightOff সম্পন্ন হয়েছে</string>
+    <string name="execution_result_summary">%2$dটির মধ্যে %1$dটি স্লিপ অ্যাকশন সফল</string>
+
+    <!-- Schedules Tab -->
+    <string name="schedules_title">সংরক্ষিত শিডিউল</string>
+    <string name="add_schedule">শিডিউল যোগ করুন</string>
+    <string name="no_schedules_yet">এখনও কোনো শিডিউল সংরক্ষিত নেই। + চাপুন।</string>
+    <string name="edit_schedule">শিডিউল সম্পাদনা</string>
+    <string name="schedule_name">শিডিউলের নাম</string>
+    <string name="days_repeat">পুনরাবৃত্তি</string>
+    <string name="one_time">একবার</string>
+    <string name="save">সংরক্ষণ</string>
+    <string name="delete">মুছুন</string>
+    <string name="cancel">বাতিল</string>
+
+    <!-- History Tab -->
+    <string name="history_title">কাজের ইতিহাস</string>
+    <string name="clear_history">ইতিহাস মুছুন</string>
+    <string name="no_history_yet">এখনও কোনো স্লিপ অ্যাকশন চলেনি।</string>
+    <string name="history_status_success">সফল</string>
+    <string name="history_status_partial">আংশিক সফল</string>
+    <string name="history_status_failed">ব্যর্থ</string>
+
+    <!-- Language -->
+    <string name="language_toggle">ভাষা / Language</string>
+</resources>

@@ -1,0 +1,104 @@
+<resources>
+    <string name="app_name">NightOff</string>
+    <string name="app_full_name">NightOff – Sleep Shutdown Scheduler</string>
+    <string name="app_tagline">Automatic actions when you fall asleep</string>
+    <string name="accessibility_service_description">NightOff uses Accessibility Service only to stop media, close apps from Recents, lock screen, and assist bedtime shutdown actions at your scheduled time.</string>
+
+    <!-- Navigation -->
+    <string name="nav_timer">Timer</string>
+    <string name="nav_schedules">Schedules</string>
+    <string name="nav_permissions">Permissions</string>
+    <string name="nav_history">History</string>
+
+    <!-- Timer Tab -->
+    <string name="quick_timer_title">Sleep Timer</string>
+    <string name="quick_timer_desc">Turn off distractions and shut down automatically</string>
+    <string name="preset_15_min">15m</string>
+    <string name="preset_30_min">30m</string>
+    <string name="preset_60_min">1h</string>
+    <string name="preset_custom">Custom</string>
+    <string name="timer_running">Timer Active</string>
+    <string name="timer_remaining">Remaining: %s</string>
+    <string name="start_sleep_timer">Start Sleep Timer</string>
+    <string name="cancel_timer">Cancel Timer</string>
+    <string name="select_actions">Actions on Sleep</string>
+
+    <!-- Actions -->
+    <string name="action_stop_media">Stop Media Playback</string>
+    <string name="action_stop_media_desc">Pauses music, podcasts, and video players</string>
+    <string name="action_close_apps">Close Apps &amp; Clear Recents</string>
+    <string name="action_close_apps_desc">Clears recent task switcher and background apps</string>
+    <string name="action_turn_off_wifi">Turn off Wi-Fi</string>
+    <string name="action_turn_off_wifi_desc">Disables Wi-Fi or shows settings panel</string>
+    <string name="action_turn_off_mobile_data">Turn off Mobile Data</string>
+    <string name="action_turn_off_mobile_data_desc">Disables cellular data connection</string>
+    <string name="action_turn_off_bluetooth">Turn off Bluetooth</string>
+    <string name="action_turn_off_bluetooth_desc">Disables Bluetooth radio to save battery</string>
+    <string name="action_mute_sound">Mute &amp; Do Not Disturb</string>
+    <string name="action_mute_sound_desc">Silences ringers, media, and notification sounds</string>
+    <string name="action_lock_screen">Lock Screen</string>
+    <string name="action_lock_screen_desc">Instantly locks the display via Device Admin or Accessibility</string>
+    <string name="action_power_off">Power Off Phone</string>
+    <string name="action_power_off_desc">Completely shuts down device (Requires Root or Shizuku)</string>
+    <string name="action_restart">Restart Phone</string>
+    <string name="action_restart_desc">Reboots device (Requires Root or Shizuku)</string>
+
+    <!-- Root / Shizuku Explanation -->
+    <string name="root_required_badge">Requires Root / Shizuku</string>
+    <string name="root_explanation">Android security prohibits regular third-party apps from powering off or restarting the phone without system privileges, root (su), or Shizuku. When available, NightOff automatically uses root commands.</string>
+    <string name="root_detected">Root Access: Available</string>
+    <string name="root_not_detected">Root Access: Not detected (Power Off/Restart disabled)</string>
+
+    <!-- Permissions Checklist -->
+    <string name="permissions_title">Permissions &amp; Readiness</string>
+    <string name="permissions_subtitle">Required for seamless background automation</string>
+    <string name="perm_exact_alarm">Exact Alarms</string>
+    <string name="perm_exact_alarm_desc">Allows triggering actions precisely at your scheduled time while sleeping</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_desc">Shows the 10-minute warning with Cancel/Delay buttons and execution status</string>
+    <string name="perm_accessibility">Accessibility Service</string>
+    <string name="perm_accessibility_desc">Used to lock the screen, clear recent apps, and stop media</string>
+    <string name="perm_device_admin">Device Admin</string>
+    <string name="perm_device_admin_desc">Alternative method to immediately lock the screen</string>
+    <string name="perm_dnd">Do Not Disturb Access</string>
+    <string name="perm_dnd_desc">Permits the app to switch phone to Silent or Do Not Disturb mode</string>
+    <string name="perm_battery_opt">Ignore Battery Optimization</string>
+    <string name="perm_battery_opt_desc">Prevents Android from killing alarms or delaying execution during deep sleep</string>
+    <string name="perm_bluetooth">Bluetooth Permission</string>
+    <string name="perm_bluetooth_desc">Allows disabling Bluetooth radios</string>
+    <string name="btn_grant">Grant</string>
+    <string name="btn_granted">Granted</string>
+    <string name="btn_configure">Settings</string>
+
+    <!-- Notification Strings -->
+    <string name="reminder_title">Sleep Timer Warning</string>
+    <string name="reminder_message">NightOff will run sleep actions in 10 minutes (%s).</string>
+    <string name="action_btn_cancel">Cancel</string>
+    <string name="action_btn_delay_10">Delay 10 Min</string>
+    <string name="action_btn_run_now">Run Now</string>
+    <string name="execution_result_title">NightOff Executed</string>
+    <string name="execution_result_summary">%1$d of %2$d sleep actions completed</string>
+
+    <!-- Schedules Tab -->
+    <string name="schedules_title">Saved Schedules</string>
+    <string name="add_schedule">Add Schedule</string>
+    <string name="no_schedules_yet">No schedules saved yet. Tap + to set up a nightly sleep schedule.</string>
+    <string name="edit_schedule">Edit Schedule</string>
+    <string name="schedule_name">Schedule Name</string>
+    <string name="days_repeat">Repeat</string>
+    <string name="one_time">One-time</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- History Tab -->
+    <string name="history_title">Execution History</string>
+    <string name="clear_history">Clear History</string>
+    <string name="no_history_yet">No sleep actions executed yet.</string>
+    <string name="history_status_success">Success</string>
+    <string name="history_status_partial">Partial Success</string>
+    <string name="history_status_failed">Failed</string>
+
+    <!-- Language -->
+    <string name="language_toggle">Language / ভাষা</string>
+</resources>

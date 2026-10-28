@@ -1,0 +1,6 @@
+{
+  "name": "NightOff",
+  "description": "Sleep shutdown scheduler for stopping media, clearing apps, toggling radios, muting sound, and locking the screen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
