@@ -218,7 +218,8 @@ object AppUpdateManager {
         val activeConn = connection ?: throw IOException("Could not connect to $initialUrl")
         val totalBytes = activeConn.contentLengthLong
 
-        val updateDir = File(context.cacheDir, "updates").apply { mkdirs() }
+        val updateDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: File(context.filesDir, "downloads")
+        if (!updateDir.exists()) updateDir.mkdirs()
         val apkFile = File(updateDir, "NightOff-v$versionName.apk")
         if (apkFile.exists()) apkFile.delete()
 
@@ -244,15 +245,15 @@ object AppUpdateManager {
     }
 
     /**
-     * Enqueues download of the new APK via system DownloadManager.
+     * Enqueues download of the new APK via system DownloadManager into app external files directory.
      */
     fun startDownload(context: Context, downloadUrl: String, versionName: String): Long {
         val fileName = "NightOff-v$versionName.apk"
         val request = DownloadManager.Request(Uri.parse(downloadUrl)).apply {
             setTitle("NightOff Update (v$versionName)")
-            setDescription("Downloading updated APK...")
+            setDescription("Downloading updated APK to app directory...")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
             setMimeType("application/vnd.android.package-archive")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 setRequiresCharging(false)
