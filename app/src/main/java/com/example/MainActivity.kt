@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -51,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -149,6 +153,8 @@ fun MainScreen(
         viewModel.refreshPermissions()
     }
 
+    val scope = rememberCoroutineScope()
+
     // Check for updates on startup via GitHub Pages version.json
     var pendingUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -163,10 +169,11 @@ fun MainScreen(
 
     val currentUpdate = pendingUpdateInfo
     if (currentUpdate != null) {
-        com.example.update.UpdateDialog(
+        com.example.ui.screens.AppUpdateScreen(
             updateInfo = currentUpdate,
             onDismiss = { pendingUpdateInfo = null }
         )
+        return
     }
 
     // Refresh permissions every time user returns to app from system settings
@@ -267,6 +274,45 @@ fun MainScreen(
                                 color = LightSuccess,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Update Page Button in TopBar
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFEFF6FF),
+                        modifier = Modifier
+                            .clickable {
+                                scope.launch {
+                                    Toast.makeText(context, "Checking for updates...", Toast.LENGTH_SHORT).show()
+                                    try {
+                                        val info = com.example.update.AppUpdateManager.checkForUpdate()
+                                        pendingUpdateInfo = info
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Update check: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            .padding(end = 6.dp)
+                            .testTag("update_topbar_button")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = "Software Update",
+                                tint = LightPrimary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Update",
+                                color = LightPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
                             )
                         }
                     }

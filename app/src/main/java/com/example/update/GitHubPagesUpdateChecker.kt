@@ -115,7 +115,15 @@ class GitHubPagesUpdateChecker(
                 val releaseNotes = json.optString("releaseNotes", "New stability improvements and bug fixes.")
                 val downloadUrl = json.optString(
                     "downloadUrl",
+                    "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk"
+                )
+                val fallbackDownloadUrl = json.optString(
+                    "fallbackDownloadUrl",
                     "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk"
+                )
+                val githubRepo = json.optString(
+                    "githubRepo",
+                    "https://github.com/BIJOY-CYBER-404/NightOff"
                 )
                 val isForceUpdate = json.optBoolean("forceUpdate", false)
 
@@ -133,7 +141,9 @@ class GitHubPagesUpdateChecker(
                     latestVersionCode = remoteVersionCode,
                     downloadUrl = downloadUrl,
                     releaseNotes = releaseNotes,
-                    isForceUpdate = isForceUpdate
+                    isForceUpdate = isForceUpdate,
+                    fallbackDownloadUrl = fallbackDownloadUrl,
+                    githubRepo = githubRepo
                 )
             } else {
                 Log.w(TAG, "Server responded with HTTP $statusCode for URL: $urlString")

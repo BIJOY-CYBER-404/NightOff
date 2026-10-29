@@ -6,5 +6,8 @@ data class AppUpdateInfo(
     val latestVersionCode: Int,
     val downloadUrl: String,
     val releaseNotes: String,
-    val isForceUpdate: Boolean = false
+    val isForceUpdate: Boolean = false,
+    val fallbackDownloadUrl: String = "",
+    val githubRepo: String = "https://github.com/BIJOY-CYBER-404/NightOff"
 )
+

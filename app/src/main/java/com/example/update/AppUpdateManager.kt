@@ -6,7 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.BuildConfig
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +16,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,9 +29,17 @@ object AppUpdateManager {
     private const val RAW_VERSION_URL =
         "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/version.json"
 
-    // Fallback: GitHub Releases API
-    private const val GITHUB_API_URL =
-        "https://api.github.com/repos/BIJOY-CYBER-404/NightOff/releases/latest"
+    // Primary direct APK mirror from repo main branch
+    const val RAW_APK_URL =
+        "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk"
+
+    // GitHub Pages APK mirror
+    const val PAGES_APK_URL =
+        "https://bijoy-cyber-404.github.io/NightOff/NightOff.apk"
+
+    // Fallback: GitHub Releases direct download
+    const val GITHUB_RELEASE_DOWNLOAD =
+        "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk"
 
     // Direct Browser Fallback
     const val GITHUB_RELEASES_WEB =
@@ -71,7 +83,15 @@ object AppUpdateManager {
                 val notes = json.optString("releaseNotes", "New bug fixes and performance improvements.")
                 val downloadUrl = json.optString(
                     "downloadUrl",
-                    "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk"
+                    RAW_APK_URL
+                )
+                val fallbackDownloadUrl = json.optString(
+                    "fallbackDownloadUrl",
+                    GITHUB_RELEASE_DOWNLOAD
+                )
+                val githubRepo = json.optString(
+                    "githubRepo",
+                    "https://github.com/BIJOY-CYBER-404/NightOff"
                 )
                 val isForce = json.optBoolean("forceUpdate", false)
 
@@ -83,61 +103,15 @@ object AppUpdateManager {
                     latestVersionCode = latestCode,
                     downloadUrl = downloadUrl,
                     releaseNotes = notes,
-                    isForceUpdate = isForce
+                    isForceUpdate = isForce,
+                    fallbackDownloadUrl = fallbackDownloadUrl,
+                    githubRepo = githubRepo
                 )
             } else {
                 null
             }
         } catch (e: Exception) {
             Log.w(TAG, "version.json fetch notice: ${e.message}")
-            null
-        }
-    }
-
-    private fun fetchFromGitHubReleasesApi(): AppUpdateInfo? {
-        return try {
-            val url = URL(GITHUB_API_URL)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 6000
-                readTimeout = 6000
-                setRequestProperty("Accept", "application/vnd.github.v3+json")
-                setRequestProperty("User-Agent", "NightOff-Updater")
-            }
-
-            if (connection.responseCode == 200) {
-                val response = BufferedReader(InputStreamReader(connection.inputStream)).readText()
-                val json = JSONObject(response)
-                val tagName = json.optString("tag_name", "v1.0").removePrefix("v").trim()
-                val body = json.optString("body", "Performance improvements and bug fixes.")
-
-                var apkDownloadUrl = GITHUB_RELEASES_WEB
-                val assets = json.optJSONArray("assets")
-                if (assets != null && assets.length() > 0) {
-                    for (i in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(i)
-                        val name = asset.optString("name", "")
-                        if (name.endsWith(".apk")) {
-                            apkDownloadUrl = asset.optString("browser_download_url", GITHUB_RELEASES_WEB)
-                            break
-                        }
-                    }
-                }
-
-                val hasUpdate = isVersionHigher(tagName, BuildConfig.VERSION_NAME)
-
-                AppUpdateInfo(
-                    hasUpdate = hasUpdate,
-                    latestVersionName = tagName,
-                    latestVersionCode = BuildConfig.VERSION_CODE + (if (hasUpdate) 1 else 0),
-                    downloadUrl = apkDownloadUrl,
-                    releaseNotes = body
-                )
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "GitHub API fetch notice: ${e.message}")
             null
         }
     }
@@ -158,7 +132,119 @@ object AppUpdateManager {
     }
 
     /**
-     * Enqueues download of the new APK via DownloadManager.
+     * Downloads APK directly via HTTP streaming with automatic redirect handling (301/302/307),
+     * real-time progress callbacks, and multi-mirror fallback (raw GitHub, GitHub Pages, releases).
+     */
+    suspend fun downloadApkWithProgress(
+        context: Context,
+        updateInfo: AppUpdateInfo,
+        onProgress: (bytesDownloaded: Long, totalBytes: Long, progress: Float) -> Unit
+    ): Result<File> = withContext(Dispatchers.IO) {
+        val candidates = linkedSetOf<String>()
+        if (updateInfo.downloadUrl.isNotBlank()) candidates.add(updateInfo.downloadUrl)
+        candidates.add(RAW_APK_URL)
+        candidates.add(PAGES_APK_URL)
+        if (updateInfo.fallbackDownloadUrl.isNotBlank()) candidates.add(updateInfo.fallbackDownloadUrl)
+        candidates.add(GITHUB_RELEASE_DOWNLOAD)
+
+        var lastError: Exception? = null
+
+        for (targetUrl in candidates) {
+            try {
+                Log.d(TAG, "Starting streaming APK download from: $targetUrl")
+                val downloadedFile = performStreamingDownload(
+                    context = context,
+                    initialUrl = targetUrl,
+                    versionName = updateInfo.latestVersionName,
+                    onProgress = onProgress
+                )
+                if (downloadedFile != null && downloadedFile.exists() && downloadedFile.length() > 50000) {
+                    Log.i(TAG, "Download succeeded: ${downloadedFile.absolutePath} (${downloadedFile.length()} bytes)")
+                    return@withContext Result.success(downloadedFile)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Mirror download attempt failed for $targetUrl: ${e.message}")
+                lastError = e
+            }
+        }
+
+        val errorMsg = lastError?.message ?: "Failed to download update APK from all available mirrors."
+        Result.failure(Exception(errorMsg, lastError))
+    }
+
+    private fun performStreamingDownload(
+        context: Context,
+        initialUrl: String,
+        versionName: String,
+        onProgress: (bytesDownloaded: Long, totalBytes: Long, progress: Float) -> Unit
+    ): File? {
+        var currentUrl = initialUrl
+        var connection: HttpURLConnection? = null
+        var redirects = 0
+        val maxRedirects = 6
+
+        while (redirects < maxRedirects) {
+            val url = URL(currentUrl)
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 15000
+                readTimeout = 25000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) NightOff-Updater/$versionName")
+                setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream, */*")
+            }
+
+            val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_MOVED_TEMP ||
+                code == HttpURLConnection.HTTP_MOVED_PERM ||
+                code == HttpURLConnection.HTTP_SEE_OTHER ||
+                code == 307 || code == 308) {
+                val location = connection.getHeaderField("Location")
+                if (location != null) {
+                    currentUrl = if (location.startsWith("http")) location else URL(url, location).toString()
+                    redirects++
+                    connection.disconnect()
+                    continue
+                }
+            }
+
+            if (code != HttpURLConnection.HTTP_OK) {
+                connection.disconnect()
+                throw IOException("Server returned HTTP $code (${connection.responseMessage}) for $currentUrl")
+            }
+            break
+        }
+
+        val activeConn = connection ?: throw IOException("Could not connect to $initialUrl")
+        val totalBytes = activeConn.contentLengthLong
+
+        val updateDir = File(context.cacheDir, "updates").apply { mkdirs() }
+        val apkFile = File(updateDir, "NightOff-v$versionName.apk")
+        if (apkFile.exists()) apkFile.delete()
+
+        activeConn.inputStream.use { input ->
+            FileOutputStream(apkFile).use { output ->
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                var totalBytesRead = 0L
+
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    output.write(buffer, 0, bytesRead)
+                    totalBytesRead += bytesRead
+                    val progress = if (totalBytes > 0) {
+                        (totalBytesRead.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+                    onProgress(totalBytesRead, totalBytes, progress)
+                }
+                output.flush()
+            }
+        }
+        activeConn.disconnect()
+        return apkFile
+    }
+
+    /**
+     * Enqueues download of the new APK via system DownloadManager.
      */
     fun startDownload(context: Context, downloadUrl: String, versionName: String): Long {
         val fileName = "NightOff-v$versionName.apk"
@@ -176,7 +262,6 @@ object AppUpdateManager {
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = manager.enqueue(request)
 
-        // Save download ID to preferences
         context.getSharedPreferences("nightoff_update_prefs", Context.MODE_PRIVATE)
             .edit()
             .putLong("pending_download_id", downloadId)
@@ -188,11 +273,29 @@ object AppUpdateManager {
 
     /**
      * Installs APK using FileProvider and Android Package Installer.
+     * Smoothly checks Unknown Sources permission on Android 8.0+.
      */
     fun installApk(context: Context, file: File) {
         if (!file.exists()) {
             Log.e(TAG, "Cannot install APK, file does not exist: ${file.absolutePath}")
+            Toast.makeText(context, "APK file not found.", Toast.LENGTH_SHORT).show()
             return
+        }
+
+        // On Android 8.0+ (API 26), verify if app can request package installs
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                Toast.makeText(
+                    context,
+                    "Please allow NightOff to install unknown apps to proceed with update",
+                    Toast.LENGTH_LONG
+                ).show()
+                val manageIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(manageIntent)
+            }
         }
 
         val apkUri = FileProvider.getUriForFile(
@@ -208,5 +311,19 @@ object AppUpdateManager {
         }
 
         context.startActivity(intent)
+    }
+
+    /**
+     * Safely opens URL in the default browser.
+     */
+    fun openInBrowser(context: Context, url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Could not open browser: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 }

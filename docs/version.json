@@ -1,8 +1,9 @@
 {
-  "latestVersionName": "1.13",
-  "latestVersionCode": 14,
-  "releaseNotes": "• Fixed Device Admin permission granting auto-back issue\n• Enhanced screen lock activation with direct ActivityResult launcher\n• Removed manual update check section from Developer page\n• Retained automatic GitHub Pages in-app update prompts",
-  "downloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
+  "latestVersionName": "1.14",
+  "latestVersionCode": 15,
+  "releaseNotes": "• Dedicated full-screen In-App Update page with hero animation\n• Real-time streaming download progress animation\n• Multi-mirror fallback with automatic redirect resolution\n• Fix for in-app download failures (direct GitHub mirror)\n• One-tap APK installation via Android FileProvider",
+  "downloadUrl": "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk",
+  "fallbackDownloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
   "githubRepo": "https://github.com/BIJOY-CYBER-404/NightOff",
   "forceUpdate": false
 }
