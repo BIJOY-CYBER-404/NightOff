@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -84,6 +88,12 @@ fun MandatoryPermissionGateScreen(
     val animatedProgress by animateFloatAsState(targetValue = progress, label = "permissionProgress")
     val allGranted = permissions.areAllRequiredGranted
 
+    val deviceAdminLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        onRefreshPermissions()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -144,15 +154,24 @@ fun MandatoryPermissionGateScreen(
                     )
                 }
 
-                // 4. Device Admin
+                // 4. Device Admin Screen Lock (Result launcher to avoid auto-back + fallback settings)
                 item {
-                    PermissionRowCard(
-                        title = "Device Admin Screen Lock",
-                        description = "Provides instant hardware screen lock when bedtime timer expires",
+                    DeviceAdminPermissionCard(
                         isGranted = permissions.hasDeviceAdmin,
-                        icon = Icons.Default.Lock,
+                        context = context,
                         onGrant = {
-                            context.startActivity(PermissionHelper.getDeviceAdminIntent(context))
+                            try {
+                                val intent = PermissionHelper.getDeviceAdminIntent(context)
+                                deviceAdminLauncher.launch(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(PermissionHelper.getDeviceAdminSettingsIntent())
+                                } catch (_: Exception) {
+                                    context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    })
+                                }
+                            }
                         }
                     )
                 }
@@ -591,6 +610,157 @@ private fun AccessibilityPermissionCard(
                                     .height(34.dp)
                             ) {
                                 Text("2. Turn ON", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceAdminPermissionCard(
+    isGranted: Boolean,
+    context: Context,
+    onGrant: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = LightCard),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isGranted) LightSuccess.copy(alpha = 0.35f) else LightCardBorder
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isGranted) LightSuccess.copy(alpha = 0.12f) else LightSurfaceVariant
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (isGranted) LightSuccess else LightTextSecondary,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Device Admin Screen Lock",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = LightTextPrimary
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Provides instant hardware screen lock when timer ends",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = LightTextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                if (isGranted) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = LightSuccess.copy(alpha = 0.12f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = LightSuccess,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Granted",
+                                color = LightSuccess,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onGrant,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(text = "Grant", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            if (!isGranted) {
+                Spacer(modifier = Modifier.height(10.dp))
+                // Fallback & explanation card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "💡 Tap 'Grant' above to activate device admin. If your device auto-backs:",
+                            fontWeight = FontWeight.SemiBold,
+                            color = LightTextPrimary,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        context.startActivity(PermissionHelper.getDeviceAdminSettingsIntent())
+                                    } catch (_: Exception) {
+                                        context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        })
+                                    }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp)
+                            ) {
+                                Text("Open Admin Settings", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = {
+                                    context.startActivity(PermissionHelper.getAppDetailsIntent(context))
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = LightWarning),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp)
+                            ) {
+                                Text("App Info (Tap ⋮)", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

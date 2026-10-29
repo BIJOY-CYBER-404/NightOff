@@ -22,27 +22,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,10 +81,6 @@ fun DeveloperScreen(
             item {
                 Spacer(modifier = Modifier.height(12.dp))
                 DeveloperHeaderCard(context = context)
-            }
-
-            item {
-                InAppUpdateCard(context = context)
             }
 
             item {
@@ -179,135 +166,7 @@ private fun DeveloperHeaderCard(context: Context) {
     }
 }
 
-@Composable
-private fun InAppUpdateCard(context: Context) {
-    val scope = rememberCoroutineScope()
-    var isChecking by remember { mutableStateOf(false) }
-    var updateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = LightCard),
-        border = androidx.compose.foundation.BorderStroke(1.dp, LightCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.SystemUpdate,
-                        contentDescription = null,
-                        tint = LightPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "In-App Software Update",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = LightTextPrimary
-                            )
-                        )
-                        Text(
-                            text = "Current Version: v${BuildConfig.VERSION_NAME}",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = LightTextSecondary,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-                }
-
-                if (isChecking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = LightPrimary
-                    )
-                } else {
-                    OutlinedButton(
-                        onClick = {
-                            isChecking = true
-                            scope.launch {
-                                updateInfo = com.example.update.GitHubPagesUpdateChecker.instance.checkForUpdate()
-                                isChecking = false
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = LightPrimary)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Check", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            if (updateInfo != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                val info = updateInfo!!
-                if (info.hasUpdate) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, LightPrimary)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "🎉 New Update Available: v${info.latestVersionName}",
-                                fontWeight = FontWeight.Bold,
-                                color = LightPrimary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = info.releaseNotes,
-                                color = LightTextSecondary,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(
-                                onClick = {
-                                    try {
-                                        AppUpdateManager.startDownload(context, info.downloadUrl, info.latestVersionName)
-                                    } catch (_: Exception) {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl)).apply {
-                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                        }
-                                        context.startActivity(intent)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Download & Install Update", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-                        }
-                    }
-                } else {
-                    Text(
-                        text = "✓ You are running the latest official release (v${BuildConfig.VERSION_NAME}).",
-                        color = Color(0xFF166534),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun SpecialityKnowledgeCard() {

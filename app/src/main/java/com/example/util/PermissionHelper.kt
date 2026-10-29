@@ -122,7 +122,21 @@ object PermissionHelper {
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
                 "NightOff requires Device Admin permission to turn off and lock your screen when you fall asleep."
             )
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            // Note: DO NOT add FLAG_ACTIVITY_NEW_TASK here.
+            // Android's DeviceAdminAdd activity explicitly checks for FLAG_ACTIVITY_NEW_TASK
+            // and auto-finishes immediately if present.
+        }
+    }
+
+    fun getDeviceAdminSettingsIntent(): Intent {
+        return try {
+            Intent("android.app.action.DEVICE_ADMIN_SETTINGS").apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        } catch (_: Exception) {
+            Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         }
     }
 
