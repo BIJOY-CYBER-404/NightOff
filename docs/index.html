@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NightOff – Sleep Shutdown Scheduler</title>
+  <style>
+    :root {
+      --primary: #2563EB;
+      --bg: #0F172A;
+      --card: #1E293B;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 36px 28px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(37, 99, 235, 0.2);
+      color: #60A5FA;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 26px;
+      font-weight: 800;
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+    .btn {
+      display: block;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .meta {
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .meta a {
+      color: #60A5FA;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Latest Release: v1.12 (Code 13)</div>
+    <h1>NightOff</h1>
+    <p>Automate media shutdown, recent apps clearance, wireless radio toggles, and screen locking as you fall asleep.</p>
+    <a class="btn" href="https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk">Download NightOff.apk</a>
+    <div class="meta">
+      <p style="margin-top: 14px; margin-bottom: 0;">Remote JSON: <a href="version.json">version.json</a></p>
+      <p style="margin-top: 6px; margin-bottom: 0;">Developer: <strong>Bijoy Kumar Sarkar</strong></p>
+    </div>
+  </div>
+</body>
+</html>

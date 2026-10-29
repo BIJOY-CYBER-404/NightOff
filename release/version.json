@@ -1,0 +1,8 @@
+{
+  "latestVersionName": "1.12",
+  "latestVersionCode": 13,
+  "releaseNotes": "• Integrated automatic in-app updates via GitHub\n• Added DownloadManager & FileProvider APK auto-installer\n• Enhanced bedtime sleep automation and recents clearance\n• Mandatory permission gate ensuring all required permissions are granted",
+  "downloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
+  "githubRepo": "https://github.com/BIJOY-CYBER-404/NightOff",
+  "forceUpdate": false
+}

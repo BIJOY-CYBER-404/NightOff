@@ -49,6 +49,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -122,7 +124,7 @@ fun MainScreen(
     onChangeLanguage: (String) -> Unit
 ) {
     var selectedTab by rememberSaveable {
-        mutableIntStateOf(if (intentTab == "history") 3 else 0)
+        mutableIntStateOf(if (intentTab == "history") 2 else 0)
     }
 
     val activeTimer by viewModel.activeQuickTimer.collectAsStateWithLifecycle()
@@ -132,13 +134,8 @@ fun MainScreen(
     val selectedPresetMinutes by viewModel.selectedPresetMinutes.collectAsStateWithLifecycle()
     val customMinutes by viewModel.customMinutes.collectAsStateWithLifecycle()
     val quickTimerActions by viewModel.quickTimerActions.collectAsStateWithLifecycle()
-    val currentLang by viewModel.currentLanguage.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    var showOnboarding by rememberSaveable {
-        val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
-        androidx.compose.runtime.mutableStateOf(prefs.getBoolean("is_first_launch", true))
-    }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -152,19 +149,57 @@ fun MainScreen(
         viewModel.refreshPermissions()
     }
 
-    BackHandler(enabled = selectedTab != 0) {
-        selectedTab = 0
+    // Check for updates on startup via GitHub Pages version.json
+    var pendingUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            val updateChecker = com.example.update.GitHubPagesUpdateChecker.instance
+            val info = updateChecker.checkForUpdate()
+            if (info.hasUpdate) {
+                pendingUpdateInfo = info
+            }
+        } catch (_: Exception) {}
     }
 
-    if (showOnboarding) {
-        com.example.ui.components.OnboardingDialog(
-            onOpenPermissions = {
-                showOnboarding = false
-                val prefs = context.getSharedPreferences("nightoff_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putBoolean("is_first_launch", false).apply()
-                selectedTab = 2
-            }
+    val currentUpdate = pendingUpdateInfo
+    if (currentUpdate != null) {
+        com.example.update.UpdateDialog(
+            updateInfo = currentUpdate,
+            onDismiss = { pendingUpdateInfo = null }
         )
+    }
+
+    // Refresh permissions every time user returns to app from system settings
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Enforce mandatory permission gate: cannot enter app until required permissions are granted
+    if (!permissions.areAllRequiredGranted) {
+        com.example.ui.screens.MandatoryPermissionGateScreen(
+            permissions = permissions,
+            onRequestNotificationPermission = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
+            onRefreshPermissions = { viewModel.refreshPermissions() },
+            onContinue = { viewModel.refreshPermissions() }
+        )
+        return
+    }
+
+    BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
     }
 
     Scaffold(
@@ -210,40 +245,38 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    // Readiness Status Pill
+                    // Protected Status Pill
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = if (permissions.isReadyForBasicSleep) Color(0xFFDCFCE7) else Color(0xFFFEF3C7),
-                        modifier = Modifier
-                            .clickable { selectedTab = 2 }
-                            .padding(end = 8.dp)
+                        color = Color(0xFFDCFCE7),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (permissions.isReadyForBasicSleep) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = if (permissions.isReadyForBasicSleep) LightSuccess else LightWarning,
+                                tint = LightSuccess,
                                 modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (permissions.isReadyForBasicSleep) "Ready" else "Checklist",
-                                color = if (permissions.isReadyForBasicSleep) LightSuccess else LightWarning,
+                                text = "Protected",
+                                color = LightSuccess,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Developer Button in TopBar (replaces language button)
+                    // Developer Button in TopBar
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = LightSurfaceVariant,
                         modifier = Modifier
-                            .clickable { selectedTab = 4 }
+                            .clickable { selectedTab = 3 }
                             .padding(end = 8.dp)
                             .testTag("developer_topbar_button")
                     ) {
@@ -280,29 +313,17 @@ fun MainScreen(
                 val items = listOf(
                     NavigationItem(0, R.string.nav_timer, Icons.Default.Bedtime, "timer_tab"),
                     NavigationItem(1, R.string.nav_schedules, Icons.Default.Alarm, "schedules_tab"),
-                    NavigationItem(2, R.string.nav_permissions, Icons.Default.Security, "permissions_tab"),
-                    NavigationItem(3, R.string.nav_history, Icons.Default.History, "history_tab")
+                    NavigationItem(2, R.string.nav_history, Icons.Default.History, "history_tab")
                 )
 
                 items.forEach { item ->
                     val isSelected = selectedTab == item.index
-                    val hasWarning = item.index == 2 && !permissions.isReadyForBasicSleep
 
                     NavigationBarItem(
                         selected = isSelected,
                         onClick = { selectedTab = item.index },
                         icon = {
-                            if (hasWarning) {
-                                BadgedBox(
-                                    badge = {
-                                        Badge(containerColor = LightWarning)
-                                    }
-                                ) {
-                                    Icon(item.icon, contentDescription = stringResource(item.labelRes))
-                                }
-                            } else {
-                                Icon(item.icon, contentDescription = stringResource(item.labelRes))
-                            }
+                            Icon(item.icon, contentDescription = stringResource(item.labelRes))
                         },
                         label = {
                             Text(
@@ -350,28 +371,11 @@ fun MainScreen(
                     onDeleteSchedule = { sched -> viewModel.deleteSchedule(sched) },
                     onTestRunNow = { scheduleId -> viewModel.runNow(scheduleId) }
                 )
-                2 -> PermissionsScreen(
-                    permissions = permissions,
-                    onRequestNotificationPermission = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                    onRequestBluetoothPermission = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                        }
-                    },
-                    onToggleVirtualRoot = { enabled ->
-                        viewModel.setVirtualRoot(enabled)
-                    },
-                    onRefresh = { viewModel.refreshPermissions() }
-                )
-                3 -> HistoryScreen(
+                2 -> HistoryScreen(
                     logs = executionLogs,
                     onClearHistory = { viewModel.clearHistory() }
                 )
-                4 -> com.example.ui.screens.DeveloperScreen()
+                3 -> com.example.ui.screens.DeveloperScreen()
             }
         }
     }

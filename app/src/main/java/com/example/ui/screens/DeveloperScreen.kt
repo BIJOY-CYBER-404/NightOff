@@ -64,8 +64,8 @@ import com.example.ui.theme.LightPrimary
 import com.example.ui.theme.LightSecondary
 import com.example.ui.theme.LightTextPrimary
 import com.example.ui.theme.LightTextSecondary
-import com.example.util.InAppUpdateManager
-import com.example.util.UpdateInfo
+import com.example.update.AppUpdateManager
+import com.example.update.AppUpdateInfo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -183,7 +183,7 @@ private fun DeveloperHeaderCard(context: Context) {
 private fun InAppUpdateCard(context: Context) {
     val scope = rememberCoroutineScope()
     var isChecking by remember { mutableStateOf(false) }
-    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var updateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -238,7 +238,7 @@ private fun InAppUpdateCard(context: Context) {
                         onClick = {
                             isChecking = true
                             scope.launch {
-                                updateInfo = InAppUpdateManager.checkForUpdates()
+                                updateInfo = com.example.update.GitHubPagesUpdateChecker.instance.checkForUpdate()
                                 isChecking = false
                             }
                         },
@@ -279,7 +279,14 @@ private fun InAppUpdateCard(context: Context) {
                             Spacer(modifier = Modifier.height(10.dp))
                             Button(
                                 onClick = {
-                                    InAppUpdateManager.downloadAndInstallUpdate(context, info.downloadUrl)
+                                    try {
+                                        AppUpdateManager.startDownload(context, info.downloadUrl, info.latestVersionName)
+                                    } catch (_: Exception) {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl)).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
+                                        context.startActivity(intent)
+                                    }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                                 shape = RoundedCornerShape(8.dp),

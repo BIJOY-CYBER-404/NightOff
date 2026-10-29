@@ -32,6 +32,19 @@ data class PermissionState(
 
     val isElevatedAvailable: Boolean
         get() = isRealRooted || isVirtualRootEnabled
+
+    val areAllRequiredGranted: Boolean
+        get() = hasExactAlarm && hasNotification && hasIgnoreBatteryOpt && hasDnd && (hasAccessibility || hasDeviceAdmin)
+
+    val requiredGrantedCount: Int
+        get() = (if (hasExactAlarm) 1 else 0) +
+                (if (hasNotification) 1 else 0) +
+                (if (hasIgnoreBatteryOpt) 1 else 0) +
+                (if (hasDnd) 1 else 0) +
+                (if (hasAccessibility) 1 else 0) +
+                (if (hasDeviceAdmin) 1 else 0)
+
+    val totalRequiredCount: Int = 6
 }
 
 object PermissionHelper {
