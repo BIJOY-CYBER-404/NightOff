@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -23,10 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.InstallMobile
-import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,14 +30,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -93,8 +86,9 @@ fun AppUpdateScreen(
 
     val animatedProgress by animateFloatAsState(targetValue = downloadProgress, label = "downloadProgressAnim")
 
-    BackHandler(enabled = !updateInfo.isForceUpdate) {
-        onDismiss()
+    // Block back press on update screen
+    BackHandler(enabled = true) {
+        // Strict mandatory update screen - do not dismiss
     }
 
     Scaffold(
@@ -103,13 +97,6 @@ fun AppUpdateScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Software Update", fontWeight = FontWeight.Bold, color = LightTextPrimary) },
-                navigationIcon = {
-                    if (!updateInfo.isForceUpdate) {
-                        IconButton(onClick = onDismiss, modifier = Modifier.testTag("back_from_update_button")) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = LightTextPrimary)
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = LightSurface)
             )
         }
@@ -152,7 +139,7 @@ fun AppUpdateScreen(
             )
 
             Text(
-                text = "Version v${updateInfo.latestVersionName} is ready to download and install. Update now for the latest features and stability improvements.",
+                text = "Version v${updateInfo.latestVersionName} is ready. Please update to proceed with using NightOff.",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = LightTextSecondary,
                     textAlign = TextAlign.Center,
@@ -180,7 +167,7 @@ fun AppUpdateScreen(
                     Column {
                         Text("Current Version", fontSize = 11.sp, color = LightTextSecondary, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightTextPrimary)
+                        Text("v${BuildConfig.VERSION_NAME}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightTextPrimary)
                     }
 
                     Surface(
@@ -198,7 +185,7 @@ fun AppUpdateScreen(
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Latest Version", fontSize = 11.sp, color = LightPrimary, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text("v${updateInfo.latestVersionName} (${updateInfo.latestVersionCode})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightPrimary)
+                        Text("v${updateInfo.latestVersionName}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightPrimary)
                     }
                 }
             }
@@ -284,7 +271,7 @@ fun AppUpdateScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = downloadStatusText.ifBlank { "Streaming update APK..." },
+                                text = downloadStatusText.ifBlank { "Downloading update..." },
                                 fontSize = 11.sp,
                                 color = LightTextSecondary
                             )
@@ -323,7 +310,7 @@ fun AppUpdateScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Action Buttons
+            // ONLY Action Button: Update Now
             if (downloadedFile == null) {
                 Button(
                     onClick = {
@@ -349,7 +336,7 @@ fun AppUpdateScreen(
                                     downloadError = err.message ?: "Download failed"
                                     try {
                                         AppUpdateManager.startDownload(context, updateInfo.downloadUrl, updateInfo.latestVersionName)
-                                        Toast.makeText(context, "Started background download via DownloadManager", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Started download in app directory", Toast.LENGTH_LONG).show()
                                     } catch (_: Exception) {}
                                 }
                             )
@@ -360,44 +347,16 @@ fun AppUpdateScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("start_download_update_button")
+                        .height(52.dp)
+                        .testTag("update_now_button")
                 ) {
-                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isDownloading) "Downloading Update..." else "Download & Update Now",
+                        text = if (isDownloading) "Downloading Update..." else "Update Now",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 16.sp
                     )
-                }
-            }
-
-            // Fallback / Browser Download Button
-            OutlinedButton(
-                onClick = {
-                    AppUpdateManager.openInBrowser(context, updateInfo.downloadUrl.ifBlank { updateInfo.githubRepo })
-                },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("browser_download_button"),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = LightPrimary)
-            ) {
-                Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Open in Browser / GitHub", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-
-            if (!updateInfo.isForceUpdate && downloadedFile == null && !isDownloading) {
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("dismiss_update_page_button")
-                ) {
-                    Text("Remind Me Later", color = LightTextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

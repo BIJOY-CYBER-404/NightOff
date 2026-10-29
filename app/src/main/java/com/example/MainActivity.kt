@@ -68,9 +68,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.filled.Tune
 import com.example.ui.NightOffViewModel
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.PermissionsScreen
+import com.example.ui.screens.ProfilesScreen
 import com.example.ui.screens.SchedulesScreen
 import com.example.ui.screens.TimerScreen
 import com.example.ui.theme.LightBackground
@@ -278,51 +280,12 @@ fun MainScreen(
                         }
                     }
 
-                    // Update Page Button in TopBar
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFEFF6FF),
-                        modifier = Modifier
-                            .clickable {
-                                scope.launch {
-                                    Toast.makeText(context, "Checking for updates...", Toast.LENGTH_SHORT).show()
-                                    try {
-                                        val info = com.example.update.AppUpdateManager.checkForUpdate()
-                                        pendingUpdateInfo = info
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Update check: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                            .padding(end = 6.dp)
-                            .testTag("update_topbar_button")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SystemUpdate,
-                                contentDescription = "Software Update",
-                                tint = LightPrimary,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Update",
-                                color = LightPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
                     // Developer Button in TopBar
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = LightSurfaceVariant,
                         modifier = Modifier
-                            .clickable { selectedTab = 3 }
+                            .clickable { selectedTab = 4 }
                             .padding(end = 8.dp)
                             .testTag("developer_topbar_button")
                     ) {
@@ -358,8 +321,9 @@ fun MainScreen(
             ) {
                 val items = listOf(
                     NavigationItem(0, R.string.nav_timer, Icons.Default.Bedtime, "timer_tab"),
-                    NavigationItem(1, R.string.nav_schedules, Icons.Default.Alarm, "schedules_tab"),
-                    NavigationItem(2, R.string.nav_history, Icons.Default.History, "history_tab")
+                    NavigationItem(1, R.string.nav_profiles, Icons.Default.Tune, "profiles_tab"),
+                    NavigationItem(2, R.string.nav_schedules, Icons.Default.Alarm, "schedules_tab"),
+                    NavigationItem(3, R.string.nav_history, Icons.Default.History, "history_tab")
                 )
 
                 items.forEach { item ->
@@ -409,7 +373,16 @@ fun MainScreen(
                     onCancelTimer = { viewModel.cancelQuickTimer() },
                     onSnoozeTimer = { viewModel.snoozeTimer(it) }
                 )
-                1 -> SchedulesScreen(
+                1 -> ProfilesScreen(
+                    schedules = allSchedules,
+                    onStartProfile = { mins, actions ->
+                        viewModel.selectPresetMinutes(mins)
+                        viewModel.startQuickTimer()
+                    },
+                    onSaveProfile = { sched -> viewModel.saveSchedule(sched) },
+                    onDeleteProfile = { sched -> viewModel.deleteSchedule(sched) }
+                )
+                2 -> SchedulesScreen(
                     schedules = allSchedules,
                     isRootAvailable = permissions.isElevatedAvailable,
                     onToggleSchedule = { sched, enabled -> viewModel.toggleSchedule(sched, enabled) },
@@ -417,11 +390,11 @@ fun MainScreen(
                     onDeleteSchedule = { sched -> viewModel.deleteSchedule(sched) },
                     onTestRunNow = { scheduleId -> viewModel.runNow(scheduleId) }
                 )
-                2 -> HistoryScreen(
+                3 -> HistoryScreen(
                     logs = executionLogs,
                     onClearHistory = { viewModel.clearHistory() }
                 )
-                3 -> com.example.ui.screens.DeveloperScreen()
+                4 -> com.example.ui.screens.DeveloperScreen()
             }
         }
     }

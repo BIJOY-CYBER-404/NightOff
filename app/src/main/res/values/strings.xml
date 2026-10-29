@@ -6,6 +6,7 @@
 
     <!-- Navigation -->
     <string name="nav_timer">Timer</string>
+    <string name="nav_profiles">Profiles</string>
     <string name="nav_schedules">Schedules</string>
     <string name="nav_permissions">Permissions</string>
     <string name="nav_history">History</string>

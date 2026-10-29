@@ -1,9 +1,9 @@
 {
-  "latestVersionName": "1.16",
-  "latestVersionCode": 17,
-  "releaseNotes": "• Smart Sleep Detection with nighttime window and non-intrusive activity checking\n• Gradual media volume fade-out over custom duration before shutdown\n• NightOff Profiles & Presets (Study night, Movie night, Work night)\n• Alarm-Safe Mode to protect upcoming morning alarms\n• Auto-Restore Wi-Fi, Bluetooth, and audio profiles\n• Smart Sleep confirmation notification flow with 'I'm awake' and snooze",
+  "latestVersionName": "1.18",
+  "latestVersionCode": 19,
+  "releaseNotes": "• Added Profiles / Presets & Automations tab to bottom dock\n• Smart Sleep Detection controls & presets (Study Night, Movie Night, Work Night)\n• Tasker and Google Assistant voice automation integration\n• Rebuilt release APK for in-app update",
   "downloadUrl": "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk",
   "fallbackDownloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
   "githubRepo": "https://github.com/BIJOY-CYBER-404/NightOff",
-  "forceUpdate": false
+  "forceUpdate": true
 }

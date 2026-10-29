@@ -6,6 +6,7 @@
 
     <!-- Navigation -->
     <string name="nav_timer">টাইমার</string>
+    <string name="nav_profiles">প্রোফাইল</string>
     <string name="nav_schedules">শিডিউল</string>
     <string name="nav_permissions">অনুমতিসমূহ</string>
     <string name="nav_history">ইতিহাস</string>
