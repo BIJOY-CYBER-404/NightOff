@@ -155,7 +155,36 @@ fun MainScreen(
 
     val scope = rememberCoroutineScope()
 
-    // Check for updates on startup via GitHub Pages version.json
+    // Refresh permissions every time user returns to app from system settings
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Enforce mandatory permission gate FIRST: cannot enter app or update screens until required permissions are granted
+    if (!permissions.areAllRequiredGranted) {
+        com.example.ui.screens.MandatoryPermissionGateScreen(
+            permissions = permissions,
+            onRequestNotificationPermission = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
+            onRefreshPermissions = { viewModel.refreshPermissions() },
+            onContinue = { viewModel.refreshPermissions() }
+        )
+        return
+    }
+
+    // Check for updates on startup via GitHub Pages version.json (only after permissions are fully granted)
     var pendingUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         try {
@@ -172,35 +201,6 @@ fun MainScreen(
         com.example.ui.screens.AppUpdateScreen(
             updateInfo = currentUpdate,
             onDismiss = { pendingUpdateInfo = null }
-        )
-        return
-    }
-
-    // Refresh permissions every time user returns to app from system settings
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshPermissions()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    // Enforce mandatory permission gate: cannot enter app until required permissions are granted
-    if (!permissions.areAllRequiredGranted) {
-        com.example.ui.screens.MandatoryPermissionGateScreen(
-            permissions = permissions,
-            onRequestNotificationPermission = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            },
-            onRefreshPermissions = { viewModel.refreshPermissions() },
-            onContinue = { viewModel.refreshPermissions() }
         )
         return
     }

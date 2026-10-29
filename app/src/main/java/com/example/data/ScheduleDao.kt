@@ -23,6 +23,9 @@ interface ScheduleDao {
     @Query("SELECT * FROM night_schedules WHERE isEnabled = 1")
     suspend fun getEnabledSchedules(): List<NightSchedule>
 
+    @Query("SELECT * FROM night_schedules")
+    suspend fun getAllSchedulesSync(): List<NightSchedule>
+
     @Query("SELECT * FROM night_schedules WHERE id = :id LIMIT 1")
     suspend fun getScheduleById(id: Long): NightSchedule?
 

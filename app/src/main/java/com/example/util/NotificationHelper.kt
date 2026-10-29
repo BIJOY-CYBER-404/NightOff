@@ -178,4 +178,55 @@ object NotificationHelper {
             // Missing POST_NOTIFICATIONS permission
         }
     }
+
+    fun showSmartSleepConfirmationNotification(context: Context) {
+        val contentIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            8888,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val awakeIntent = Intent(context, ActionNotificationReceiver::class.java).apply {
+            action = "ACTION_IM_AWAKE"
+        }
+        val awakePending = PendingIntent.getBroadcast(
+            context,
+            8889,
+            awakeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val delayIntent = Intent(context, ActionNotificationReceiver::class.java).apply {
+            action = "ACTION_DELAY_30"
+        }
+        val delayPending = PendingIntent.getBroadcast(
+            context,
+            8890,
+            delayIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_nightoff_fg)
+            .setContentTitle("Looks like you fell asleep")
+            .setContentText("Shutting down in 5 minutes unless you respond.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Looks like you fell asleep. Shutting down in 5 minutes. Tap I'm awake or Delay 30 min."))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(contentPendingIntent)
+            .addAction(0, "I'm Awake", awakePending)
+            .addAction(0, "Delay 30 Min", delayPending)
+
+        try {
+            NotificationManagerCompat.from(context).notify(
+                NOTIFICATION_ID_REMINDER_BASE + 999,
+                builder.build()
+            )
+        } catch (e: SecurityException) {}
+    }
 }
