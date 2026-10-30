@@ -1,7 +1,9 @@
 package com.example.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.graphics.Path
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +13,21 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 class NightOffAccessibilityService : AccessibilityService() {
 
+    private val handler = Handler(Looper.getMainLooper())
+
+    @Volatile
+    private var pendingAction: PendingAction = PendingAction.NONE
+
+    enum class PendingAction {
+        NONE,
+        CLEAR_RECENTS,
+        TOGGLE_WIFI_OFF,
+        TOGGLE_DATA_OFF,
+        TOGGLE_BLUETOOTH_OFF,
+        POWER_OFF,
+        RESTART
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -18,7 +35,47 @@ class NightOffAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Event processing
+        if (event == null || pendingAction == PendingAction.NONE) return
+
+        val rootNode = rootInActiveWindow ?: event.source ?: return
+
+        when (pendingAction) {
+            PendingAction.CLEAR_RECENTS -> {
+                if (attemptClearRecents(rootNode)) {
+                    pendingAction = PendingAction.NONE
+                    handler.postDelayed({ performGlobalAction(GLOBAL_ACTION_HOME) }, 400)
+                }
+            }
+            PendingAction.TOGGLE_WIFI_OFF -> {
+                if (attemptToggleQuickSetting(rootNode, listOf("wi-fi", "wifi", "internet", "ওয়াই-ফাই", "ইন্টারনেট"))) {
+                    pendingAction = PendingAction.NONE
+                    handler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 500)
+                }
+            }
+            PendingAction.TOGGLE_DATA_OFF -> {
+                if (attemptToggleQuickSetting(rootNode, listOf("mobile data", "cellular data", "data", "মোবাইল ডাটা", "মোবাইল ডেটা", "ডেটা"))) {
+                    pendingAction = PendingAction.NONE
+                    handler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 500)
+                }
+            }
+            PendingAction.TOGGLE_BLUETOOTH_OFF -> {
+                if (attemptToggleQuickSetting(rootNode, listOf("bluetooth", "ব্লুটুথ", "bt"))) {
+                    pendingAction = PendingAction.NONE
+                    handler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 500)
+                }
+            }
+            PendingAction.POWER_OFF -> {
+                if (attemptClickPowerMenu(rootNode, isRestart = false)) {
+                    pendingAction = PendingAction.NONE
+                }
+            }
+            PendingAction.RESTART -> {
+                if (attemptClickPowerMenu(rootNode, isRestart = true)) {
+                    pendingAction = PendingAction.NONE
+                }
+            }
+            PendingAction.NONE -> {}
+        }
     }
 
     override fun onInterrupt() {
@@ -43,90 +100,51 @@ class NightOffAccessibilityService : AccessibilityService() {
         }
     }
 
-    fun showPowerMenu(): Boolean {
-        return performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
-    }
-
-    fun triggerPowerOffOrRestart(isRestart: Boolean): Boolean {
-        val menuOpened = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
-        if (!menuOpened) return false
-
-        // Wait for power menu dialog to appear, then search and click "Power off" or "Restart"
-        Thread {
-            for (attempt in 1..10) {
-                try {
-                    Thread.sleep(300)
-                    val rootNode = rootInActiveWindow ?: continue
-                    val targetKeywords = if (isRestart) {
-                        listOf("restart", "reboot", "পুনরারম্ভ", "পুনরায় চালু", "reiniciar", "redémarrer", "neu starten")
-                    } else {
-                        listOf("power off", "shut down", "shutdown", "poweroff", "পাওয়ার অফ", "বন্ধ করুন", "apagado", "éteindre", "ausschalten")
-                    }
-
-                    if (findAndClickNode(rootNode, targetKeywords)) {
-                        Log.d(TAG, "Successfully clicked power menu item (restart=$isRestart)")
-                        // Short pause, then confirm if a second confirmation dialog appears ("Tap again to restart/power off")
-                        Thread.sleep(500)
-                        val confirmRoot = rootInActiveWindow
-                        if (confirmRoot != null) {
-                            findAndClickNode(confirmRoot, targetKeywords)
-                        }
-                        break
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Power menu click attempt error: ${e.message}")
-                }
-            }
-        }.start()
-
-        return true
-    }
-
     fun clearRecentsAndHome(): Boolean {
-        // 1. Trigger Recents UI
-        val recentsSuccess = performGlobalAction(GLOBAL_ACTION_RECENTS)
-        
-        // 2. Poll across multiple frames as Recents launcher animation runs
+        pendingAction = PendingAction.CLEAR_RECENTS
+        val ok = performGlobalAction(GLOBAL_ACTION_RECENTS)
+
         Thread {
-            var clicked = false
-            for (attempt in 1..12) {
+            for (attempt in 1..15) {
                 try {
-                    Thread.sleep(250)
-                    val rootNode = rootInActiveWindow ?: continue
-                    
-                    // Search by known resource IDs first
-                    if (clickClearAllById(rootNode)) {
-                        clicked = true
-                        Log.d(TAG, "Cleared recents via resource ID on attempt $attempt")
+                    Thread.sleep(200)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptClearRecents(root)) {
+                        pendingAction = PendingAction.NONE
+                        Thread.sleep(300)
+                        performGlobalAction(GLOBAL_ACTION_HOME)
                         break
                     }
-                    
-                    // Search by text keywords
-                    if (findAndClickClearAllByText(rootNode)) {
-                        clicked = true
-                        Log.d(TAG, "Cleared recents via text search on attempt $attempt")
-                        break
+
+                    // On attempt 4 and 8, scroll recents horizontally to reveal 'Clear All' if off-screen (Pixel/Stock Launcher)
+                    if (attempt == 4 || attempt == 8) {
+                        scrollRecentsLeft(root)
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Clear recents poll error: ${e.message}")
+                    Log.w(TAG, "Recents clear loop error: ${e.message}")
                 }
             }
-            
-            // Short delay, then return to home screen
-            try { Thread.sleep(300) } catch (_: Exception) {}
-            performGlobalAction(GLOBAL_ACTION_HOME)
+
+            // Fallback: If 'Clear All' button wasn't found, perform multiple swipe up gestures to dismiss recent cards
+            if (pendingAction == PendingAction.CLEAR_RECENTS) {
+                dismissRecentCardsBySwipe()
+                pendingAction = PendingAction.NONE
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
         }.start()
 
-        return recentsSuccess
+        return ok
     }
 
-    private fun clickClearAllById(node: AccessibilityNodeInfo): Boolean {
+    private fun attemptClearRecents(rootNode: AccessibilityNodeInfo): Boolean {
+        // 1. Known resource IDs across launchers
         val knownIds = listOf(
             "com.android.systemui:id/clear_all_button",
             "com.android.systemui:id/clear_all",
             "com.sec.android.app.launcher:id/clear_all_button",
             "com.sec.android.app.launcher:id/clear_all",
             "com.google.android.apps.nexuslauncher:id/clear_all_button",
+            "com.google.android.apps.nexuslauncher:id/clear_all",
             "com.miui.home:id/clear_all",
             "com.miui.home:id/clear_all_button",
             "com.oppo.launcher:id/clear_all",
@@ -136,25 +154,213 @@ class NightOffAccessibilityService : AccessibilityService() {
         )
 
         for (id in knownIds) {
-            val matchingNodes = node.findAccessibilityNodeInfosByViewId(id)
+            val matchingNodes = rootNode.findAccessibilityNodeInfosByViewId(id)
             if (!matchingNodes.isNullOrEmpty()) {
                 for (matched in matchingNodes) {
-                    if (performClickHierarchy(matched)) {
-                        return true
-                    }
+                    if (performClickHierarchy(matched)) return true
                 }
             }
+        }
+
+        // 2. Multilingual keywords
+        val keywords = listOf(
+            "clear all", "close all", "dismiss all", "clean all", "remove all", "clear", "close",
+            "সব মুছুন", "সব বন্ধ করুন", "সব সাফ করুন", "সাফ করুন", "মুছে ফেলুন", "বন্ধ করুন",
+            "limpiar todo", "cerrar todo", "tout effacer", "alles schließen", "alles löschen"
+        )
+        return findAndClickNode(rootNode, keywords)
+    }
+
+    private fun scrollRecentsLeft(rootNode: AccessibilityNodeInfo) {
+        // Try scrolling scrollable views or dispatch swipe right gesture to scroll recents left
+        try {
+            val scrollables = rootNode.findAccessibilityNodeInfosByViewId("com.google.android.apps.nexuslauncher:id/overview_panel")
+            if (!scrollables.isNullOrEmpty()) {
+                scrollables[0].performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+            } else {
+                dispatchSwipeGesture(startX = 100f, startY = 800f, endX = 900f, endY = 800f)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun dismissRecentCardsBySwipe() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            for (i in 1..4) {
+                dispatchSwipeGesture(startX = 500f, startY = 1200f, endX = 500f, endY = 200f)
+                try { Thread.sleep(200) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    fun turnOffWifiViaQuickSettings(): Boolean {
+        pendingAction = PendingAction.TOGGLE_WIFI_OFF
+        val ok = performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+
+        Thread {
+            for (attempt in 1..10) {
+                try {
+                    Thread.sleep(300)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptToggleQuickSetting(root, listOf("wi-fi", "wifi", "internet", "ওয়াই-ফাই", "ইন্টারনেট"))) {
+                        pendingAction = PendingAction.NONE
+                        Thread.sleep(400)
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (pendingAction == PendingAction.TOGGLE_WIFI_OFF) {
+                pendingAction = PendingAction.NONE
+            }
+        }.start()
+
+        return ok
+    }
+
+    fun turnOffMobileDataViaQuickSettings(): Boolean {
+        pendingAction = PendingAction.TOGGLE_DATA_OFF
+        val ok = performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+
+        Thread {
+            for (attempt in 1..10) {
+                try {
+                    Thread.sleep(300)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptToggleQuickSetting(root, listOf("mobile data", "cellular data", "data", "মোবাইল ডাটা", "মোবাইল ডেটা", "ডেটা"))) {
+                        pendingAction = PendingAction.NONE
+                        Thread.sleep(400)
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (pendingAction == PendingAction.TOGGLE_DATA_OFF) {
+                pendingAction = PendingAction.NONE
+            }
+        }.start()
+
+        return ok
+    }
+
+    fun turnOffBluetoothViaQuickSettings(): Boolean {
+        pendingAction = PendingAction.TOGGLE_BLUETOOTH_OFF
+        val ok = performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+
+        Thread {
+            for (attempt in 1..10) {
+                try {
+                    Thread.sleep(300)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptToggleQuickSetting(root, listOf("bluetooth", "ব্লুটুথ", "bt"))) {
+                        pendingAction = PendingAction.NONE
+                        Thread.sleep(400)
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (pendingAction == PendingAction.TOGGLE_BLUETOOTH_OFF) {
+                pendingAction = PendingAction.NONE
+            }
+        }.start()
+
+        return ok
+    }
+
+    fun triggerPowerOff(): Boolean {
+        pendingAction = PendingAction.POWER_OFF
+        val ok = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+
+        Thread {
+            for (attempt in 1..10) {
+                try {
+                    Thread.sleep(300)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptClickPowerMenu(root, isRestart = false)) {
+                        pendingAction = PendingAction.NONE
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (pendingAction == PendingAction.POWER_OFF) {
+                pendingAction = PendingAction.NONE
+            }
+        }.start()
+
+        return ok
+    }
+
+    fun triggerRestart(): Boolean {
+        pendingAction = PendingAction.RESTART
+        val ok = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+
+        Thread {
+            for (attempt in 1..10) {
+                try {
+                    Thread.sleep(300)
+                    val root = rootInActiveWindow ?: continue
+                    if (attemptClickPowerMenu(root, isRestart = true)) {
+                        pendingAction = PendingAction.NONE
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (pendingAction == PendingAction.RESTART) {
+                pendingAction = PendingAction.NONE
+            }
+        }.start()
+
+        return ok
+    }
+
+    private fun attemptToggleQuickSetting(rootNode: AccessibilityNodeInfo, keywords: List<String>): Boolean {
+        return findAndToggleTile(rootNode, keywords)
+    }
+
+    private fun findAndToggleTile(node: AccessibilityNodeInfo, keywords: List<String>): Boolean {
+        val text = node.text?.toString()?.lowercase()
+        val desc = node.contentDescription?.toString()?.lowercase()
+
+        for (kw in keywords) {
+            if ((text != null && text.contains(kw)) || (desc != null && desc.contains(kw))) {
+                if (performClickHierarchy(node)) return true
+            }
+        }
+
+        // Check if there is a switch widget inside panel
+        if (node.className?.toString()?.contains("Switch", ignoreCase = true) == true ||
+            node.className?.toString()?.contains("ToggleButton", ignoreCase = true) == true) {
+            if (node.isChecked) {
+                return performClickHierarchy(node)
+            }
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            if (findAndToggleTile(child, keywords)) return true
         }
         return false
     }
 
-    private fun findAndClickClearAllByText(node: AccessibilityNodeInfo): Boolean {
-        val clearKeywords = listOf(
-            "clear all", "close all", "dismiss all", "clean all", "remove all",
-            "সব মুছুন", "সব বন্ধ করুন", "সব সাফ করুন", "সাফ করুন", "মুছে ফেলুন", "বন্ধ করুন",
-            "limpiar todo", "cerrar todo", "tout effacer", "alles schließen", "alles löschen"
-        )
-        return findAndClickNode(node, clearKeywords)
+    private fun attemptClickPowerMenu(rootNode: AccessibilityNodeInfo, isRestart: Boolean): Boolean {
+        val keywords = if (isRestart) {
+            listOf("restart", "reboot", "পুনরারম্ভ", "পুনরায় চালু", "রিবুট", "reiniciar", "redémarrer")
+        } else {
+            listOf("power off", "shut down", "shutdown", "poweroff", "পাওয়ার অফ", "বন্ধ করুন", "শাট ডাউন", "apagado", "éteindre")
+        }
+
+        val clicked = findAndClickNode(rootNode, keywords)
+        if (clicked) {
+            // Check for second confirmation tap after 500ms
+            handler.postDelayed({
+                val confirmRoot = rootInActiveWindow
+                if (confirmRoot != null) {
+                    findAndClickNode(confirmRoot, keywords)
+                }
+            }, 500)
+            return true
+        }
+        return false
     }
 
     private fun findAndClickNode(node: AccessibilityNodeInfo, keywords: List<String>): Boolean {
@@ -163,17 +369,13 @@ class NightOffAccessibilityService : AccessibilityService() {
 
         for (kw in keywords) {
             if ((text != null && text.contains(kw)) || (desc != null && desc.contains(kw))) {
-                if (performClickHierarchy(node)) {
-                    return true
-                }
+                if (performClickHierarchy(node)) return true
             }
         }
 
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            if (findAndClickNode(child, keywords)) {
-                return true
-            }
+            if (findAndClickNode(child, keywords)) return true
         }
         return false
     }
@@ -192,29 +394,17 @@ class NightOffAccessibilityService : AccessibilityService() {
         return false
     }
 
-    fun toggleSwitchInSettingsPanel(turnOn: Boolean): Boolean {
-        // Find and toggle switch widget in Settings panel or Quick Settings
-        val rootNode = rootInActiveWindow ?: return false
-        return findAndToggleSwitch(rootNode, turnOn)
-    }
-
-    private fun findAndToggleSwitch(node: AccessibilityNodeInfo, turnOn: Boolean): Boolean {
-        if (node.className?.toString()?.contains("Switch", ignoreCase = true) == true ||
-            node.className?.toString()?.contains("ToggleButton", ignoreCase = true) == true) {
-            val isChecked = node.isChecked
-            if (isChecked != turnOn) {
-                return performClickHierarchy(node)
+    private fun dispatchSwipeGesture(startX: Float, startY: Float, endX: Float, endY: Float) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val path = Path().apply {
+                moveTo(startX, startY)
+                lineTo(endX, endY)
             }
-            return true
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 200))
+                .build()
+            dispatchGesture(gesture, null, null)
         }
-
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            if (findAndToggleSwitch(child, turnOn)) {
-                return true
-            }
-        }
-        return false
     }
 
     companion object {

@@ -31,7 +31,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val app = context.applicationContext as? com.example.NightOffApplication
+                val sched = app?.database?.scheduleDao()?.getScheduleById(scheduleId)
                 ActionExecutor.execute(context, scheduleId)
+                if (sched != null && sched.isQuickTimer && app != null) {
+                    app.repository.cancelQuickTimer()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error executing schedule $scheduleId: ${e.message}", e)
             } finally {

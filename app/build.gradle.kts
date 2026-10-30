@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.nightoff.slpshd"
     minSdk = 26
     targetSdk = 36
-    versionCode = 20
-    versionName = "1.19"
+    versionCode = 22
+    versionName = "1.21"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

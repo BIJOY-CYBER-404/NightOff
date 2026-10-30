@@ -175,23 +175,17 @@ object ActionExecutor {
             Log.w(TAG, "killBackgroundProcesses notice: ${e.message}")
         }
 
-        val appDetails = if (killedApps.isNotEmpty()) {
-            "Closed background processes (${killedApps.size} apps)"
-        } else {
-            "Background processes closed & home navigated"
-        }
-
         return if (accessibilityCleared) {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Recent task switcher cleared & apps closed."
+                "Recents task switcher cleared & apps closed"
             )
         } else {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "$appDetails (Virtual Root)"
+                "Background processes closed & home navigated"
             )
         }
     }
@@ -220,24 +214,16 @@ object ActionExecutor {
             }
         }
 
-        // On Android 10+ (API 29+), use Accessibility Service to open Settings panel and toggle switch off
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null) {
-            try {
-                val panelIntent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(panelIntent)
-                Thread.sleep(400)
-                accessibilityService.toggleSwitchInSettingsPanel(false)
-                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via Accessibility Settings Panel")
-            } catch (e: Exception) {
-                Log.w(TAG, "Wi-Fi settings panel intent error: ${e.message}")
+            val ok = accessibilityService.turnOffWifiViaQuickSettings()
+            if (ok) {
+                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi toggled off via Quick Settings")
             }
         }
 
         return if (RootUtil.isVirtualRootEnabled(context)) {
-            ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi bedtime sleep mode restriction applied")
+            ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi bedtime sleep policy active")
         } else {
             ActionResult(SleepAction.TURN_OFF_WIFI, false, "Enable Accessibility Service to turn off Wi-Fi on Android 10+")
         }
@@ -251,15 +237,10 @@ object ActionExecutor {
 
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null) {
-            try {
-                val panelIntent = Intent(Settings.ACTION_DATA_ROAMING_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(panelIntent)
-                Thread.sleep(400)
-                accessibilityService.toggleSwitchInSettingsPanel(false)
-                return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data disabled via Settings Panel")
-            } catch (_: Exception) {}
+            val ok = accessibilityService.turnOffMobileDataViaQuickSettings()
+            if (ok) {
+                return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data toggled off via Quick Settings")
+            }
         }
 
         return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data bedtime disconnect policy active")
@@ -273,7 +254,6 @@ object ActionExecutor {
             }
         }
 
-        // Try direct BluetoothAdapter call
         try {
             val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
             val adapter = bluetoothManager?.adapter ?: @Suppress("DEPRECATION") BluetoothAdapter.getDefaultAdapter()
@@ -288,18 +268,12 @@ object ActionExecutor {
             Log.w(TAG, "BluetoothAdapter disable notice: ${e.message}")
         }
 
-        // Accessibility fallback
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null) {
-            try {
-                val btIntent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(btIntent)
-                Thread.sleep(400)
-                accessibilityService.toggleSwitchInSettingsPanel(false)
-                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via Settings Panel")
-            } catch (_: Exception) {}
+            val ok = accessibilityService.turnOffBluetoothViaQuickSettings()
+            if (ok) {
+                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth toggled off via Quick Settings")
+            }
         }
 
         return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth bedtime sleep mode applied")
@@ -346,12 +320,11 @@ object ActionExecutor {
             }
         }
 
-        // Accessibility Service Power Dialog trigger
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null) {
-            val triggered = accessibilityService.triggerPowerOffOrRestart(isRestart = false)
+            val triggered = accessibilityService.triggerPowerOff()
             if (triggered) {
-                return ActionResult(SleepAction.POWER_OFF, true, "Power Off dialog triggered via Accessibility Service")
+                return ActionResult(SleepAction.POWER_OFF, true, "Power Off triggered via System Power Menu")
             }
         }
 
@@ -366,12 +339,11 @@ object ActionExecutor {
             }
         }
 
-        // Accessibility Service Power Dialog trigger
         val accessibilityService = NightOffAccessibilityService.instance
         if (accessibilityService != null) {
-            val triggered = accessibilityService.triggerPowerOffOrRestart(isRestart = true)
+            val triggered = accessibilityService.triggerRestart()
             if (triggered) {
-                return ActionResult(SleepAction.RESTART_PHONE, true, "System Restart dialog triggered via Accessibility Service")
+                return ActionResult(SleepAction.RESTART_PHONE, true, "System Restart triggered via System Power Menu")
             }
         }
 

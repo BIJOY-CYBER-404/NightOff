@@ -125,7 +125,11 @@ class ScheduleRepository(
 
     fun runNow(scheduleId: Long) {
         CoroutineScope(Dispatchers.IO).launch {
+            val sched = scheduleDao.getScheduleById(scheduleId)
             ActionExecutor.execute(context, scheduleId)
+            if (sched != null && sched.isQuickTimer) {
+                cancelQuickTimer()
+            }
         }
     }
 
