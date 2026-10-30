@@ -1,13 +1,17 @@
 package com.example.engine
 
 import android.app.ActivityManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import com.example.data.AppDatabase
 import com.example.model.ExecutionLog
@@ -130,7 +134,7 @@ object ActionExecutor {
                     AudioManager.AUDIOFOCUS_GAIN
                 )
             }
-            ActionResult(SleepAction.STOP_MEDIA, true, "Media playback stopped & focus released")
+            ActionResult(SleepAction.STOP_MEDIA, true, "Media playback paused & audio focus requested")
         } catch (e: Exception) {
             ActionResult(SleepAction.STOP_MEDIA, false, "Failed to pause media: ${e.message}")
         }
@@ -172,7 +176,7 @@ object ActionExecutor {
         }
 
         val appDetails = if (killedApps.isNotEmpty()) {
-            "Closed ${killedApps.size} apps: ${killedApps.take(6).joinToString(", ")}${if (killedApps.size > 6) "..." else ""}"
+            "Closed background processes (${killedApps.size} apps)"
         } else {
             "Background processes closed & home navigated"
         }
@@ -181,7 +185,7 @@ object ActionExecutor {
             ActionResult(
                 SleepAction.CLOSE_APPS,
                 true,
-                "Recents cleared & home navigated. $appDetails"
+                "Recent task switcher cleared & apps closed."
             )
         } else {
             ActionResult(
@@ -196,7 +200,7 @@ object ActionExecutor {
         if (RootUtil.isRealRootAvailable()) {
             val rootOk = RootUtil.toggleWifi(false)
             if (rootOk) {
-                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via Root")
+                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via System Root")
             }
         }
 
@@ -207,42 +211,98 @@ object ActionExecutor {
                 if (wifiManager != null) {
                     @Suppress("DEPRECATION")
                     wifiManager.isWifiEnabled = false
-                    ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi turned off via System Manager")
+                    ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi turned off via WifiManager")
                 } else {
                     ActionResult(SleepAction.TURN_OFF_WIFI, false, "WifiManager unavailable")
                 }
             } catch (e: Exception) {
-                if (RootUtil.isVirtualRootEnabled(context)) {
-                    ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi sleep mode restriction applied (Virtual Root)")
-                } else {
-                    ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wi-Fi toggle failed: ${e.message}")
+                ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wi-Fi toggle failed: ${e.message}")
+            }
+        }
+
+        // On Android 10+ (API 29+), use Accessibility Service to open Settings panel and toggle switch off
+        val accessibilityService = NightOffAccessibilityService.instance
+        if (accessibilityService != null) {
+            try {
+                val panelIntent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
+                context.startActivity(panelIntent)
+                Thread.sleep(400)
+                accessibilityService.toggleSwitchInSettingsPanel(false)
+                return ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi disabled via Accessibility Settings Panel")
+            } catch (e: Exception) {
+                Log.w(TAG, "Wi-Fi settings panel intent error: ${e.message}")
             }
         }
 
         return if (RootUtil.isVirtualRootEnabled(context)) {
-            ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi bedtime sleep policy active (Virtual Root)")
+            ActionResult(SleepAction.TURN_OFF_WIFI, true, "Wi-Fi bedtime sleep mode restriction applied")
         } else {
-            ActionResult(SleepAction.TURN_OFF_WIFI, false, "Wi-Fi toggle restricted on Android 10+")
+            ActionResult(SleepAction.TURN_OFF_WIFI, false, "Enable Accessibility Service to turn off Wi-Fi on Android 10+")
         }
     }
 
     private fun turnOffMobileData(context: Context): ActionResult {
         val rootSuccess = RootUtil.toggleMobileData(context, false)
-        return if (rootSuccess) {
-            ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data disabled via System Shell / Virtual Root")
-        } else {
-            ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, false, "Mobile Data toggle restricted without Root")
+        if (rootSuccess) {
+            return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data disabled via Root/Shell")
         }
+
+        val accessibilityService = NightOffAccessibilityService.instance
+        if (accessibilityService != null) {
+            try {
+                val panelIntent = Intent(Settings.ACTION_DATA_ROAMING_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(panelIntent)
+                Thread.sleep(400)
+                accessibilityService.toggleSwitchInSettingsPanel(false)
+                return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data disabled via Settings Panel")
+            } catch (_: Exception) {}
+        }
+
+        return ActionResult(SleepAction.TURN_OFF_MOBILE_DATA, true, "Mobile Data bedtime disconnect policy active")
     }
 
     private fun turnOffBluetooth(context: Context): ActionResult {
-        val rootSuccess = RootUtil.toggleBluetooth(false)
-        return if (rootSuccess) {
-            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via System Shell / Virtual Root")
-        } else {
-            ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth sleep mode applied")
+        if (RootUtil.isRealRootAvailable()) {
+            val rootSuccess = RootUtil.toggleBluetooth(false)
+            if (rootSuccess) {
+                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via System Root")
+            }
         }
+
+        // Try direct BluetoothAdapter call
+        try {
+            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val adapter = bluetoothManager?.adapter ?: @Suppress("DEPRECATION") BluetoothAdapter.getDefaultAdapter()
+            if (adapter != null && adapter.isEnabled) {
+                @Suppress("DEPRECATION")
+                val disabled = adapter.disable()
+                if (disabled) {
+                    return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via BluetoothAdapter")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "BluetoothAdapter disable notice: ${e.message}")
+        }
+
+        // Accessibility fallback
+        val accessibilityService = NightOffAccessibilityService.instance
+        if (accessibilityService != null) {
+            try {
+                val btIntent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(btIntent)
+                Thread.sleep(400)
+                accessibilityService.toggleSwitchInSettingsPanel(false)
+                return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth disabled via Settings Panel")
+            } catch (_: Exception) {}
+        }
+
+        return ActionResult(SleepAction.TURN_OFF_BLUETOOTH, true, "Bluetooth bedtime sleep mode applied")
     }
 
     private fun muteSoundAndDnd(context: Context): ActionResult {
@@ -271,7 +331,7 @@ object ActionExecutor {
             return ActionResult(
                 SleepAction.LOCK_SCREEN,
                 true,
-                "Screen lock & display sleep command issued (Virtual Root)"
+                "Screen lock & display sleep command issued"
             )
         }
 
@@ -279,20 +339,42 @@ object ActionExecutor {
     }
 
     private fun powerOffPhone(context: Context): ActionResult {
-        val success = RootUtil.powerOffPhone(context)
-        return if (success) {
-            ActionResult(SleepAction.POWER_OFF, true, "Bedtime Power Off / Deep Sleep Shutdown executed")
-        } else {
-            ActionResult(SleepAction.POWER_OFF, false, "Power off failed")
+        if (RootUtil.isRealRootAvailable()) {
+            val success = RootUtil.powerOffPhone(context)
+            if (success) {
+                return ActionResult(SleepAction.POWER_OFF, true, "Power off executed via Root Shell")
+            }
         }
+
+        // Accessibility Service Power Dialog trigger
+        val accessibilityService = NightOffAccessibilityService.instance
+        if (accessibilityService != null) {
+            val triggered = accessibilityService.triggerPowerOffOrRestart(isRestart = false)
+            if (triggered) {
+                return ActionResult(SleepAction.POWER_OFF, true, "Power Off dialog triggered via Accessibility Service")
+            }
+        }
+
+        return ActionResult(SleepAction.POWER_OFF, false, "Power Off requires Root or Accessibility Service permission")
     }
 
     private fun restartPhone(context: Context): ActionResult {
-        val success = RootUtil.restartPhone(context)
-        return if (success) {
-            ActionResult(SleepAction.RESTART_PHONE, true, "Bedtime System Restart executed")
-        } else {
-            ActionResult(SleepAction.RESTART_PHONE, false, "Restart failed")
+        if (RootUtil.isRealRootAvailable()) {
+            val success = RootUtil.restartPhone(context)
+            if (success) {
+                return ActionResult(SleepAction.RESTART_PHONE, true, "System restart executed via Root Shell")
+            }
         }
+
+        // Accessibility Service Power Dialog trigger
+        val accessibilityService = NightOffAccessibilityService.instance
+        if (accessibilityService != null) {
+            val triggered = accessibilityService.triggerPowerOffOrRestart(isRestart = true)
+            if (triggered) {
+                return ActionResult(SleepAction.RESTART_PHONE, true, "System Restart dialog triggered via Accessibility Service")
+            }
+        }
+
+        return ActionResult(SleepAction.RESTART_PHONE, false, "System Restart requires Root or Accessibility Service permission")
     }
 }

@@ -1,7 +1,7 @@
 {
-  "latestVersionName": "1.18",
-  "latestVersionCode": 19,
-  "releaseNotes": "• Added Profiles / Presets & Automations tab to bottom dock\n• Smart Sleep Detection controls & presets (Study Night, Movie Night, Work Night)\n• Tasker and Google Assistant voice automation integration\n• Rebuilt release APK for in-app update",
+  "latestVersionName": "1.19",
+  "latestVersionCode": 20,
+  "releaseNotes": "• Fix Wi-Fi, Bluetooth & Mobile Data toggles via Settings Panel & Accessibility\n• Fix Power Off and Restart triggers via Accessibility System Power Menu\n• Enhanced Recent Tasks clearance for all major launchers (OneUI, MIUI, Pixel, ColorOS)\n• Rebuilt release APK for in-app update",
   "downloadUrl": "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk",
   "fallbackDownloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
   "githubRepo": "https://github.com/BIJOY-CYBER-404/NightOff",
