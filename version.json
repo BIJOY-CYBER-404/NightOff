@@ -1,7 +1,7 @@
 {
-  "latestVersionName": "1.21",
-  "latestVersionCode": 22,
-  "releaseNotes": "• Upgraded Recent Tasks clearance with horizontal scrolling and swipe dismissal fallbacks\n• Added Mobile Data, Wi-Fi & Bluetooth Quick Settings auto-toggle\n• Improved Power Off and Restart triggers for custom OEM Android launchers\n• Rebuilt release APK for in-app update",
+  "latestVersionName": "1.22",
+  "latestVersionCode": 23,
+  "releaseNotes": "• UI rendering performance optimizations & recomposition skipping\n• Pre-cached list sorting for ultra-smooth 60/120fps scrolling\n• Optimized state management across all screens\n• Rebuilt release APK for in-app update",
   "downloadUrl": "https://raw.githubusercontent.com/BIJOY-CYBER-404/NightOff/main/NightOff.apk",
   "fallbackDownloadUrl": "https://github.com/BIJOY-CYBER-404/NightOff/releases/latest/download/NightOff.apk",
   "githubRepo": "https://github.com/BIJOY-CYBER-404/NightOff",

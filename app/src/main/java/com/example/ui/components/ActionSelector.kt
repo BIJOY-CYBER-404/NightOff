@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +45,13 @@ import com.example.model.SleepAction
 import com.example.ui.theme.LightCard
 import com.example.ui.theme.LightCardBorder
 import com.example.ui.theme.LightPrimary
-import com.example.ui.theme.LightSecondary
 import com.example.ui.theme.LightSuccess
 import com.example.ui.theme.LightSurfaceVariant
 import com.example.ui.theme.LightTextPrimary
 import com.example.ui.theme.LightTextSecondary
 import com.example.ui.theme.LightWarning
+
+private val sortedSleepActions = SleepAction.values().sortedBy { it.executionOrder }
 
 @Composable
 fun ActionSelector(
@@ -62,7 +64,7 @@ fun ActionSelector(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SleepAction.values().sortedBy { it.executionOrder }.forEach { action ->
+        sortedSleepActions.forEach { action ->
             val isSelected = selectedActions.contains(action)
             val isActionDisabled = action.requiresRoot && !isRootAvailable
 
@@ -89,7 +91,7 @@ private fun ActionItemRow(
     isRootAvailable: Boolean,
     onToggle: () -> Unit
 ) {
-    val icon = getActionIcon(action)
+    val icon = remember(action) { getActionIcon(action) }
 
     Card(
         modifier = Modifier
